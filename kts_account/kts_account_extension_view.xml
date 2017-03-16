@@ -1,0 +1,734 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+            <record id="kts_view_tax_form_extension" model="ir.ui.view">
+            <field name="name">account.tax.form.extension</field>
+            <field name="model">account.tax</field>
+            <field name="inherit_id" ref="account.view_tax_form"/>     
+                 <field name="arch" type="xml">
+                 <field name="name" position="after">
+                 <field name="sequence"/>
+                 <field name="tax_category"/>
+                 <field name="precision"/>                                                  
+                 </field>
+                 <field name="type_tax_use" position="after">
+                 <field name="tax_type"/>                 
+                 <field name="freight_charges"/>                 
+                 
+                 <field name="packing_charges"/>
+                
+                     
+                 </field>
+                 <xpath expr="//page[@name='definition']" position="after">
+                     <page name="Subtax" string="Sub Tax">                       
+                     <field name="sub_tax_ids"/>
+                     </page>
+                 </xpath>               
+                 </field>
+             </record>
+             
+             <record id="kts_view_account_fiscal_position_form" model="ir.ui.view">
+             <field name="name">kts.account.fiscal.position.form</field>
+             <field name="model">account.fiscal.position</field>
+             <field name="inherit_id" ref="account.view_account_position_form"/>
+                   <field name="arch" type="xml">
+                       <field name="name" position="after">
+                       <field name="tax_type"/>
+                       </field>
+                       <field name="active" position="after">
+                       <field name="start_date"/>
+                       </field>
+                       <field name="auto_apply" position="after">
+                       <field name="form_type" widget="selection"/>
+                       <field name="trade_type" widget="selection"/>
+                       <field name="end_date"/>
+                       <field name="type" widget="selection"/>
+                       <field name="price_include"/>
+                       </field>
+                       
+                       <page name="account_mapping" position="after">
+                       
+                       <page name="note" string="Note">
+                         <group string="Remark">
+                        
+                         <field name="note" colspan="4" nolabel="1"
+                            placeholder="This note will be displayed on the Invoice VAT and Excise Declaration."/>
+                         
+                         </group>
+                       
+                       </page>
+                       
+                       </page>
+                   
+                   </field>
+             </record>                  
+             
+             <record id="kts_view_account_fiscal_position_tree" model="ir.ui.view">
+             <field name="name">kts.account.fiscal.position.tree</field>
+             <field name="model">account.fiscal.position</field>
+             <field name="inherit_id" ref="account.view_account_position_tree"/>
+                   <field name="arch" type="xml">
+                   <field name="name" position="after">
+                    <field name="type"/>
+                    <field name="tax_type"/>
+                   
+                   </field>
+                   
+                   </field>
+             </record> 
+            
+            
+             <record id="kts_view_account_invoice_form" model="ir.ui.view">
+             <field name="name">kts.account.invoice.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_form"/>
+                   <field name="arch" type="xml">
+                         <field name="partner_id" position="attributes">
+                             <attribute name="domain">[('parent_id','=',False),('customer','=',True)]</attribute>
+                         </field>  
+                 
+                         <xpath expr="//page/group/field[@name='amount_untaxed']" position="after">
+                            <field name="freight_and_packing"/>
+                         </xpath>
+                         
+                         <field name="fiscal_position_id" position="replace"/>
+                         <field name="payment_term_id" position="after">
+                         <field name="fiscal_position_id" domain="[('type','=','out_invoice')]" required="0"/>                         
+                         </field>
+                         <field name="journal_id" position="replace"/>
+                         <field name="payment_term_id" position="after">
+                         <field name="journal_id"/>
+                         </field>
+                         <field name="payment_term_id" position="after"> 
+                         <field name="tax_type"/>
+                         </field>                                                 
+                         
+                       <field name = "invoice_line_ids" position="after">
+                       <group class="oe_footer" colspan="2" col="6">                         
+                          <field name="packing_account"/>
+                          <field name="packing_charges_type"/>
+                          <field name="packing_charges"/>
+                          <field name="freight_account"/>                          
+                          <field name="freight_charges_type"/> 
+                          <field name="freight_charges"  />                                           
+                          </group> 
+                         </field>
+                        <field name="date_due" position="after">
+                          <field name="confirmation_date"/>
+                          <field name="item_removal_date"/>
+                        </field>
+                        <field name="incoterms_id" position="after">
+                          <field name="dispatch_mode"/>
+                        </field>
+                   </field>       
+             </record>
+             <record id="kts_view_account_vendor_invoice_form" model="ir.ui.view">
+             <field name="name">kts.account.invoice.vendor.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_supplier_form"/>
+                   <field name="arch" type="xml">
+                   <field name="partner_id" position="attributes">
+                             <attribute name="domain">[('parent_id','=',False),('supplier','=',True)]</attribute>
+                         </field>  
+                 
+                   <xpath expr="//page/group/group/field[@name='amount_untaxed']" position="after">
+                            <field name="freight_and_packing"/>
+                          </xpath>
+                  
+                   <xpath expr="//page/group/group/field[@name='amount_total']" position="after">  
+                            <field name="tds_amount"/>
+                          </xpath>
+                         
+                         <field name="purchase_id" position="after"> 
+                         <field name="tax_type"/>
+                         </field>                         
+                         <field name="fiscal_position_id" position="replace"/>
+                         <field name="date_due" position="after">
+                         <field name="fiscal_position_id" domain="[('type','=','in_invoice')]" required="1"/>                         
+                         </field>
+                         <field name="journal_id" position="replace"/>
+                         <field name="date_due" position="after">
+                         <field name="journal_id"/>
+                         </field>
+                         
+                   <field name = "invoice_line_ids" position="after">
+                       <group col="7">                         
+                          
+                             <field name="packing_account"/>
+                             <field name="packing_charges_type"/>
+                             <field name="packing_charges" nolabel="1"/>
+                             <field name="tds_packing"/>
+                       
+                             <field name="freight_account"/>                          
+                             <field name="freight_charges_type"/> 
+                             <field name="freight_charges" nolabel="1"/>                                           
+                             <field name="tds_freight"/>
+                       
+                       </group >    
+                          <group class="oe_footer" col="6">                          
+                           <field name="tds_account"/>
+                           <field name="tds_charges_type"/>
+                           <field name="tds_charges" attrs="{'readonly':[('tds_charges_type','=','variable')]}"/>
+                       </group>
+                         
+                   </field>
+                   </field>       
+             </record>
+            
+             <record id="kts_view_account_freight_and_packing_form" model="ir.ui.view">
+                 <field name="name">kts.account.frieght.packing.charges.form</field>
+                 <field name="model">account.freight_and_packing</field>
+                   <field name="arch" type="xml">
+                     <form string="Freight and Packing Charges ">
+                       <sheet>
+                       <group name="top">
+                          <group name="left">
+                             <field name="name" required="True"/>
+                             <field name = "journal_type"/>
+                             <field name="active"/>
+                          </group>
+                          <group name="right">
+                              <field name="packing_account"/>                        
+                              <field name="freight_account"/>
+                          </group>
+                       </group>
+                       </sheet>
+                     </form>
+                   
+                   </field>       
+             </record>
+            
+            
+            <record id="action_kts_account_freight_and_packing_form" model="ir.actions.act_window">
+            <field name="name">Freight and Packing Charges</field>
+            <field name="res_model">account.freight_and_packing</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+            </record>
+            
+            <menuitem
+            id="menu_kts_account_freight_and_packing_charges"
+            name="Freight and Packing Charges"
+            action="action_kts_account_freight_and_packing_form"
+            parent="account.account_account_menu"
+            groups="account.group_account_manager"
+            sequence="8"/>
+            
+            <record id="kts_view_account_tds_form" model="ir.ui.view">
+                 <field name="name">kts.account.tds.form</field>
+                 <field name="model">account.ktstds</field>
+                   <field name="arch" type="xml">
+                     <form string="TDS">
+                       <sheet>
+                       <group name="top">
+                          <group name="left">
+                             <field name="name"/>
+                             <field name="tds_account"/>
+                             <field name="perc"/>
+                          </group>
+                           <group name="right">
+                              <field name="precision"/>
+                              <field name="active"/>
+                           </group>
+                       </group>
+                       </sheet>
+                     </form>                   
+                   </field>       
+             </record>
+            
+            <record id="kts_view_account_tds_tree" model="ir.ui.view">
+                 <field name="name">kts.account.tds.tree</field>
+                 <field name="model">account.ktstds</field>
+                   <field name="arch" type="xml">
+                     <tree string="TDS">
+                       
+                             <field name="name"/>
+                             <field name="tds_account"/>
+                             <field name="perc"/>
+                              <field name="precision"/>
+                              <field name="active"/>
+                       </tree>                   
+                   </field>       
+             </record>
+            
+            
+            <record id="action_kts_account_tds_form" model="ir.actions.act_window">
+            <field name="name">TDS</field>
+            <field name="res_model">account.ktstds</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+            </record>
+            
+            <menuitem
+            id="menu_kts_account_tds"
+            name="TDS"
+            action="action_kts_account_tds_form"
+            parent="account.account_account_menu"
+            groups="account.group_account_manager"
+            sequence="7"/>                   
+     
+         <record id="kts_view_order_form" model="ir.ui.view">
+            <field name="name">kts.sale.order.form</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>      
+                <field name="arch" type="xml">
+                 <field name="partner_id" position="attributes">
+                 <attribute name="domain">[('parent_id','=',False),('customer','=',True)]</attribute>
+                 </field>  
+                 <xpath expr="//page/group/field[@name='amount_untaxed']" position="after">
+                          <field name="freight_and_packing"/>
+                 </xpath>
+                 <field name="fiscal_position_id" position="replace"/>
+                 <field name="payment_term_id" position="after">
+                   <field name="fiscal_position_id" required="0" />
+                 </field>
+                 <field name="fiscal_position_id" position="before">
+                   <field name="tax_type"/>
+                 </field>
+                 <field name = "order_line" position="after">
+                       <group >                         
+                          <group>  
+                          <field name="packing_charges_type"/>
+                          <field name="packing_charges"/>
+                           </group>
+                           <group>                         
+                          <field name="freight_charges_type"/> 
+                          <field name="freight_charges"  /> 
+                          </group>                                          
+                       </group> 
+                   </field>
+                <field name = "client_order_ref" position="after">
+                   <field name="client_order_ref_date"/>
+                </field>
+                <field name="client_order_ref" position="before">
+                  <field name="dispatch_mode"/>
+                </field>
+                </field>  
+         
+         </record>   
+     
+         <record id="kts_view_purchase_order_form" model="ir.ui.view">
+            <field name="name">kts.purchase.order.form</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_form"/>      
+                <field name="arch" type="xml">
+                
+                <field name="partner_id" position="attributes">
+                 <attribute name="domain">[('parent_id','=',False),('supplier','=',True)]</attribute>
+                 </field>  
+                <xpath expr="//page/group/field[@name='amount_untaxed']" position="after">
+                      <field name="freight_and_packing"/>
+                 </xpath>
+                 <field name="fiscal_position_id" position="replace"/>
+                 <field name="date_order" position="after">
+                   <field name="fiscal_position_id" required="1" />
+                 </field>
+                 
+                 <field name="fiscal_position_id" position="before">
+                   <field name="tax_type"/>
+                 </field>
+                 <field name="incoterm_id" position="attributes">
+                  <attribute name="attrs">{'required':True}</attribute>
+                 </field>  
+                <field name="date_planned" position="after">
+                   <field name="supplier_schedule_date"/>
+                </field>
+                <field name = "order_line" position="after">
+                       <group>                         
+                          <group>
+                          <field name="packing_charges_type"/>
+                          <field name="packing_charges"/>
+                           </group>
+                           <group>                         
+                          <field name="freight_charges_type"/> 
+                          <field name="freight_charges"  />                                           
+                          </group>
+                       </group> 
+                   </field>
+                <xpath expr="//notebook" position="inside">
+                <page string="Notes" name="note">
+                  <field name="note" attrs="{'readonly':[('state','in',('purchase','done','cancel'))]}"/>
+                </page>
+                
+                </xpath>   
+                </field>  
+         </record>   
+         
+        
+        <record id="action_bank_statement_tree" model="ir.actions.act_window">
+            <field name="name">Bank Statements</field>
+            <field name="res_model">account.bank.statement</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form,pivot,graph</field>
+            <field name="domain">[('journal_id.type', '=', 'bank')]</field>
+            <field name="context">{'journal_type':'bank'}</field>
+            <field name="search_view_id" ref="account.view_bank_statement_search"/>
+            <field name="help" type="html">
+              <p class="oe_view_nocontent_create">
+                Click to register a bank statement.
+              </p><p>
+                A bank statement is a summary of all financial transactions
+                occurring over a given period of time on a bank account. You
+                should receive this periodicaly from your bank.
+              </p><p>
+                ERP allows you to reconcile a statement line directly with
+                the related sale or puchase invoices.
+              </p>
+            </field>
+        </record>
+         
+         <menuitem
+            id="menu_bank_statement"
+            name="Bank"
+            action="action_bank_statement_tree"
+            parent="account.menu_finance_entries"
+            groups="account.group_account_manager"
+            sequence="7"/>                   
+        
+         <record id="action_view_bank_statement_tree" model="ir.actions.act_window">
+            <field name="name">Cash Registers</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">account.bank.statement</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form,pivot,graph</field>
+            <field name="view_id" ref="account.view_bank_statement_tree"/>
+            <field name="search_view_id" ref="account.view_bank_statement_search"/>
+            <field name="domain">[('journal_id.type', '=', 'cash')]</field>
+            <field name="context">{'journal_type':'cash'}</field>
+            <field name="help" type="html">
+              <p class="oe_view_nocontent_create">
+                Click to create a new cash log.
+              </p><p>
+                A Cash Register allows you to manage cash entries in your cash
+                journals. This feature provides an easy way to follow up cash
+                payments on a daily basis. You can enter the coins that are in
+                your cash box, and then post entries when money comes in or
+                goes out of the cash box.
+              </p>
+            </field>
+        </record>
+       <menuitem
+            id="menu_cash_statement"
+            name="Cash"
+            action="account.action_view_bank_statement_tree"
+            parent="account.menu_finance_entries"
+            groups="account.group_account_manager"
+            sequence="8"/>                   
+      
+      
+       <record id="kts_view_payment_form" model="ir.ui.view">
+          <field name="name">kts.payment.form</field>
+          <field name="model">account.payment</field>
+          <field name="inherit_id" ref="account.view_account_payment_form"/>
+          <field name="arch" type="xml">
+            <field name="communication" position="after">
+              <field name="cheque_no"/>
+              <field name="cheque_date"/>  
+              <field name="Payee_name"/> 
+            </field>
+            <xpath  expr="//div[@name='amount_div']" position="after">
+              
+              <field name="note"/>
+              
+            </xpath>
+          </field>
+       </record> 
+       
+       <record id="kts_view_bank_statement_form" model="ir.ui.view">
+          <field name="name">kts.bank.statement.form</field>
+          <field name="model">account.bank.statement</field>
+          <field name="inherit_id" ref="account.view_bank_statement_form"/>
+          <field name="arch" type="xml">
+            <field name="date" position="after">
+              <group>
+             <field name="note"/> 
+   action_country           </group>
+            </field>
+            
+            <field name="balance_start" position="after">
+              <group>
+              <field name="cheque_no"/>
+              <field name="cheque_date"/>  
+              <field name="Payee_name"/> 
+                         
+              </group>
+            </field>
+            <field name="balance_start" position="replace"/>
+            <field name="balance_end_real" position="replace"/>
+          </field>
+       </record>
+           
+       <record id="kts_purchase_order_line" model="ir.ui.view">
+        <field name="name">kts.purchase.order.line</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <field name="price_unit" position="after">
+            <field name="discount"/>
+         </field> 
+        </field>
+       </record>   
+        
+        <record id="kts_account_invoice_tax_view" model="ir.ui.view">
+        <field name="name">kts.account.invoice.tax</field>
+        <field name="model">account.invoice</field>
+        <field name="inherit_id" ref="account.invoice_form"/>
+        <field name="arch" type="xml">
+            <field name="amount" position="before">
+            <field name="tax_type"/>  
+            </field>     
+            <field name="amount" position="after">
+            <field name="base_amount"/>  
+            </field> 
+        </field>
+       </record>   
+        
+        <record id="kts_account_invoice_supplier_tax_view" model="ir.ui.view">
+        <field name="name">kts.account.invoice.tax</field>
+        <field name="model">account.invoice</field>
+        <field name="inherit_id" ref="account.invoice_supplier_form"/>
+        <field name="arch" type="xml">
+            <field name="amount" position="before">
+            <field name="tax_type"/>  
+            </field>     
+            <field name="amount" position="after">
+            <field name="base_amount"/>  
+            </field> 
+        </field>
+       </record>   
+       
+        
+        
+        <record id="kts_product_template_view" model="ir.ui.view">
+        <field name="name">kts.product.template.view</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <field name="tracking" position="before">
+            <field name="serialno" attrs="{'invisible': [('tracking', 'not in', ('serial','lot'))]}"/>  
+            </field>     
+            <field name="tracking" position="after">
+              <field name="serial_sequence" attrs="{'invisible': [('tracking', 'not in', ('serial','lot'))]}"/>  
+            </field> 
+        </field>
+       </record> 
+       
+       <record id="kts_control_account_form" model="ir.ui.view">
+          <field name="name">kts.control.account.form</field>
+          <field name="model">kts.control.account</field>
+          <field name="arch" type="xml">
+            <form string="Control Account">
+               <sheet>
+                  <group>
+                     <field name="name"/>
+                     <field name="emp_flag"/>
+                     <field name="creditor_acc_tag_ids" widget="many2many_tags"/>
+                     <field name="debitor_acc_tag_ids" widget="many2many_tags"/>
+                     <field name="creditor_ledger_tag_id"/>                  
+                     <field name="debtor_ledger_tag_id"/>                  
+                     <field name="creditor_bal_sheet_tag_id"/>
+                     <field name="debtor_bal_sheet_tag_id"/>
+                     <field name="ledger_report_type" widget="selection"/>
+                  </group>
+               </sheet>
+            </form>
+          </field>
+       </record> 
+       
+       <record id="action_kts_control_account" model="ir.actions.act_window">
+            <field name="name">Control Account</field>
+            <field name="res_model">kts.control.account</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+            </record>
+            
+       <menuitem
+            id="menu_control_account"
+            name="Control Account"
+            action="action_kts_control_account"
+            parent="account.menu_finance_configuration"
+            sequence="2"/>                   
+        
+         <record id="kts_view_partner_view" model="ir.ui.view">
+            <field name="name">kts.partner.view.form</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>      
+            <field name="arch" type="xml">
+               <field name="property_account_receivable_id" position="attributes">
+                  <attribute name="readonly">1</attribute>
+               </field>
+               
+               <field name="property_account_payable_id" position="attributes">
+                  <attribute name="readonly">1</attribute>
+               </field>
+               
+         </field> 
+          
+         </record>        
+           <record id="kts_view_account_account_form" model="ir.ui.view">
+            <field name="name">kts.account.account.form</field>
+            <field name="model">account.account</field>
+            <field name="inherit_id" ref="account.view_account_form"/>      
+            <field name="arch" type="xml">
+               <field name="tag_ids" position="after">
+                  <field name="ledger_report_type" widget="selection"/>
+                  <field name="ledger_tag"/>
+                  <field name="bal_sheet_tag" options="{'no_open':True,'no_create':True}"/>
+               </field>
+            </field> 
+         </record>        
+         
+         <record id="kts_account_level_form" model="ir.ui.view">
+          <field name="name">kts.account.level.form</field>
+          <field name="model">kts.account.level</field>
+          <field name="arch" type="xml">
+            <form string="Balance Sheet Configuration Form">
+               <sheet>
+                <div>
+                     <h1 class="mt0">
+                        <label string="Name"/>
+                        <field name="name"/>  
+                     </h1>
+                 </div>  
+                 <group>
+                      <group string="Level For Balance Sheet">
+                          <field name="order"/>
+                          <field name="level2" widget="selection"/>                  
+                          <field name="level1" widget="selection"/>
+                     </group>
+                         <group string="Note">
+                             <field name="note"/>                    
+                         </group>
+                 </group>
+               <notebook>  
+                   <page  name="account_tag_line" string="Account And Tag Lines">
+                     <group>
+                        <group string="Accounts">
+                        <field name="account_ids" widget="one2many_tags" nolable="1"/>       
+                        </group>
+                        <group string="Tags" nolable="1">
+                        <field name="tag_ids" widget="one2many_tags" />  
+                        </group>
+                     </group>
+                   </page>             
+               </notebook>
+               </sheet>
+            </form>
+          </field>
+       </record> 
+       
+       <record id="kts_account_level_tree" model="ir.ui.view">
+          <field name="name">kts.account.level.tree</field>
+          <field name="model">kts.account.level</field>
+          <field name="arch" type="xml">
+                <tree string="Balance Sheet Configuration Form">
+                     <field name="name" />
+                     <field name="order" />
+                     <field name="level1" />
+                     <field name="level2" />                  
+                </tree>
+          </field>
+       </record>
+            
+      
+      
+       <record id="action_kts_account_level" model="ir.actions.act_window">
+            <field name="name">Account Level</field>
+            <field name="res_model">kts.account.level</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+            </record>
+            
+       <menuitem
+            id="menu_account_level"
+            name="Balance Sheet Account Config"
+            action="action_kts_account_level"
+            parent="account.menu_finance_configuration"
+            sequence="3"/>                   
+      
+      <record id="kts_account_account_tag_form" model="ir.ui.view">
+          <field name="name">kts.account.account.tag.form</field>
+          <field name="model">account.account.tag</field>
+          <field name="arch" type="xml">
+            <form string="Account Tag Configuration Form">
+               <sheet>
+                  <group>
+                     <field name="name"/>
+                     <field name="applicability" widget="selection"/>
+                     <field name="color"/>
+                  </group>
+               </sheet>
+            </form>
+          </field>
+     </record>
+     
+     <record id="kts_account_account_tag_tree" model="ir.ui.view">
+          <field name="name">kts.account.account.tag.tree</field>
+          <field name="model">account.account.tag</field>
+          <field name="arch" type="xml">
+            <tree>
+               <field name="name"/>
+               <field name="applicability"/>
+               <field name="color"/>
+            </tree>
+          </field>
+     </record>
+     
+     <record id="action_kts_account_account_tag" model="ir.actions.act_window">
+            <field name="name">Account Tags</field>
+            <field name="res_model">account.account.tag</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+            </record>
+            
+       <menuitem
+            id="menu_account_account_tag"
+            name="Account Tag Config"
+            action="action_kts_account_account_tag"
+            parent="account.menu_finance_configuration"
+            sequence="4"/>                   
+      
+      <record id="kts_view_stock_picking_form_inherit" model="ir.ui.view">
+            <field name="name">stock.picking.form.inherit</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>     
+                 <field name="arch" type="xml">
+                 <field name="origin" position="after">
+                  <field name="sale_id" attrs="{'invisible':[('picking_type_code','!=','outgoing')]}"/>
+                  <field name="purchase_new_id" readonly="1" attrs="{'invisible':[('picking_type_code','!=','incoming')]}"/>
+                 
+                 </field>
+                 
+                 </field>
+        </record>
+        
+        <record id="kts_view_product_supplierinfo_form_inherit" model="ir.ui.view">
+            <field name="name">kts.product.supplierinfo.inherit</field>
+            <field name="model">product.supplierinfo</field>
+            <field name="inherit_id" ref="product.product_supplierinfo_form_view"/>     
+                 <field name="arch" type="xml">
+                 <field name="name" position="attributes">
+                   <attribute name="domain">[('supplier','=',True),('parent_id','=',False)]</attribute>
+                 
+                 </field>
+                 <field name="product_id" position="after">
+                 <label for="trans_lead_time"/>
+                 <div>
+                     <field name="trans_lead_time" class="oe_inline"/> days
+                 </div>
+                 </field>
+                 </field>
+        </record>
+        
+        <record id="kts_view_stock_incoterms_form_inherit" model="ir.ui.view">
+            <field name="name">kts.stock.incoterms.form.inherit</field>
+            <field name="model">stock.incoterms</field>
+            <field name="inherit_id" ref="stock.stock_incoterms_form"/>     
+                 <field name="arch" type="xml">
+                 <field name="code" position="after">
+                 <field name="trans_supplier_lead_sep"/>
+                 </field>
+                 </field>
+        </record>
+       
+     
+</odoo>

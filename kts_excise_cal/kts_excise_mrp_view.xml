@@ -1,0 +1,98 @@
+<odoo>
+       
+       <record id="view_kts_abatement_master_tree" model="ir.ui.view">
+            <field name="name">kts.abatement.master.tree</field>
+            <field name="model">kts.abatement.master</field>
+            <field name="arch" type="xml">
+                <tree string="Abatement Master">
+                    <field name="name"/>
+                    <field name="perc"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_kts_abatement_master_form" model="ir.ui.view">
+            <field name="name">kts.abatement.master.form</field>
+            <field name="model">kts.abatement.master</field>
+            <field name="arch" type="xml">
+                <form string="Abatement Master">
+                    <sheet>
+                    <group>
+                        <field name="name"/> 
+                        <field name="perc"/>
+                    </group>
+                    </sheet>
+               </form>
+            </field>
+        </record>
+
+       
+       
+       <record id="action_kts_abatement_master" model="ir.actions.act_window">
+            <field name="name">Abatement</field>
+            <field name="res_model">kts.abatement.master</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help"> Select Abatement</field>
+        </record>
+
+        <menuitem action="action_kts_abatement_master" 
+        id="menu_kts_abatement_master" 
+        parent="sales_team.menu_sale_config" 
+        sequence="38" 
+          /> 
+        
+        <record id="kts_product_template_excise_view" model="ir.ui.view">
+        <field name="name">kts.product.template.excise.view</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <field name="uom_id" position="before">
+            <field name="mrp_price" string="Maximum Retail Price" widget="monetary" />  
+            <field name="excise_app" string="Excise Applicable"/>
+            <field name="abatement_id" string="Excise Abatement" attrs="{'invisible': [('excise_app', '=', False)],'required':[('excise_app','=',True)]}"/>
+            </field>            
+        </field>
+       </record> 
+        
+        <record id="view_kts_sale_order_line_excise_form" model="ir.ui.view">
+            <field name="name">kts.sale.order.line.excise.form</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>      
+                <field name="arch" type="xml">
+                    <xpath expr="//field[@name='order_line']/form/group/group/div[@name='discount']" position="after">
+                         <field name="mrp_price" />
+                         <field name="abatement_perc"/>
+                         <field name="net_mrp" invisible="1"/>
+                   </xpath>
+                    <xpath expr="//field[@name='order_line']/tree/field[@name='price_subtotal']" position="after">
+                         <field name="mrp_price" />
+                         <field name="abatement_perc"/>
+                         <field name="net_mrp" />
+                   </xpath>
+                </field>
+        </record>  
+        <record id="view_kts_account_invoice_line_excise_form" model="ir.ui.view">
+             <field name="name">kts.account.invoice.line.excise.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_form"/>
+                   <field name="arch" type="xml">
+                    <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='price_subtotal']" position="after">
+                         <field name="mrp_price"/>
+                         <field name="abatement_perc" />
+                         <field name="net_mrp"/>
+                   </xpath>           
+                   </field>
+        </record> 
+        
+        <record id="view_kts_tax_excise_form" model="ir.ui.view">
+            <field name="name">account.tax.excise.form</field>
+            <field name="model">account.tax</field>
+            <field name="inherit_id" ref="account.view_tax_form"/>     
+                 <field name="arch" type="xml">
+                 <field name="type_tax_use" position="after">
+                      <field name="applicable_mrp" attrs="{'invisible': [('type_tax_use', '!=', 'sale')]}"/>
+                 </field>
+                 </field>
+        </record>                       
+</odoo>
