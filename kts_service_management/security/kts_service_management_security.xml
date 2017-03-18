@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+	<data noupdate="0">
+	    <record model="ir.module.category" id="module_category_service_management">
+            <field name="name">Service Management</field> 
+            <field name="sequence">9</field>
+        </record>
+	   	<record id="group_service_management_team" model="res.groups">
+        	<field name="name">Service Team</field>
+        	<field name="category_id" ref="kts_service_management.module_category_service_management"/>
+        	<field name="comment">the user will have access to his own data in the service management.</field>  
+   	 	</record>
+   	 	<record id="group_service_management_manager" model="res.groups">
+        	<field name="name">Service Manager</field>
+        	<field name="comment">the user will have access to all the data in the service management.</field>
+   	 	    <field name="category_id" ref="kts_service_management.module_category_service_management"/>
+            <field name="implied_ids" eval="[(4, ref('group_service_management_team'))]"/>
+   	 	    <field name="users" eval="[(4, ref('base.user_root'))]"/>
+   	 	</record>
+   	 	<record id="group_sla" model="res.groups">
+        	<field name="name">SLA</field>
+        	<field name="comment">the user will have access to his own data in the SLA.</field>
+   	 	</record>
+   	 	<record id="group_visit_dtails" model="res.groups">
+        	<field name="name">Visit Details</field>
+        	<field name="comment">the user will have access to his own data in the Visit Details.</field>
+   	 	</record>
+   	 	
+	</data>
+</openerp>

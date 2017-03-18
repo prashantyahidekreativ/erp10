@@ -1,0 +1,304 @@
+from openerp import models, fields, api, _
+from openerp.exceptions import UserError
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+from openerp import SUPERUSER_ID
+import openerp.addons.decimal_precision as dp
+from openerp.tools import float_is_zero, float_compare, DEFAULT_SERVER_DATETIME_FORMAT
+class Kts_contract(models.Model):
+    _name = 'kts.contract'
+    _order = 'id desc' 
+    
+    name = fields.Char('Name', required=True)
+    type = fields.Selection([('warranty','Warranty'),('amc','AMC')],'Type')
+    val_duration = fields.Integer('Validity Duration(Months)', default=0)
+    val_duration_date = fields.Date('Validity Date')
+    no_proac_visit = fields.Integer('Proactive Visit', help='Give Number of proactive visit',default=0)
+    no_ins_visit = fields.Boolean('Installation Visit', help='Give Number of Installation visit',default=False)
+    due_date = fields.Date('Due date(Installation)')   
+    no_free_visit = fields.Integer('Free Visit',help='Give Number of free visit',default=0)
+    fre_pro_visit = fields.Selection([('yearly','Yearly'),('semiyearly','Semiyearly'),('quat','Quaterly'),('monthly','Monthly')],'Proactive Frequency visit')
+    contract_line = fields.One2many('kts.contract.line', 'contract_id','Contract Line' )
+      
+class Kts_contract_line(models.Model):
+    _name='kts.contract.line'
+    product_id = fields.Many2one('product.product','Product')
+    no_to_replace = fields.Integer('Number of free replacement')    
+    contract_id = fields.Many2one('kts.contract', required=True, index=True,string='Contract Reference')
+
+class Kts_product_master(models.Model):
+    _inherit='product.template'
+    contract_line_ids = fields.One2many('kts.product.contract.line','product_id',string='Contract Line')
+    
+    @api.multi
+    @api.onchange('contract_line_ids')
+    def _onchange_default_contract(self):
+        res=False
+        for line in self.contract_line_ids:
+            if line.default_contract:
+                if res:
+                    raise  UserError(_('Select 1 default contract only'))
+                else:
+                    res=True
+                
+class Kts_contract_line(models.Model):
+    _name='kts.product.contract.line'    
+    
+    name= fields.Char('Description')
+    product_id = fields.Many2one('product.template',string='Product Reference', ondelete='cascade', index=True)
+    contract_id = fields.Many2one('kts.contract','Contract')
+    val_duration_date = fields.Date(related='contract_id.val_duration_date',string='Validity Date')
+    default_contract = fields.Boolean('Default')
+            
+class Kts_sale_order_contract(models.Model):
+    _inherit = 'sale.order.line'
+    contract_id=fields.Many2one('kts.contract',string='Contract',readonly=True, states={'draft': [('readonly', False)],'sent': [('readonly', False)]})
+
+    @api.multi
+    @api.onchange('product_id')
+    def product_id_change_contract(self):
+        vals={}
+        if not self.product_id and not self.product_id.contract_line_ids:
+            return {'domain': {'contract_id':[]}}
+        for line in self.product_id.contract_line_ids:
+            if line.default_contract:
+                res = line.contract_id     
+                vals['contract_id']=res
+                self.update(vals)
+                return {'domain': {'contract_id':[('id','in',res.id)]}}  
+                          
+class Kts_contract_so_invoice(models.Model):
+    _inherit='sale.order'
+    contract_inv_ids = fields.Many2many('kts.contract.customer','Contracts',) 
+    contract_count = fields.Integer(string='Contract count',readonly=True,default=1)
+    
+    @api.multi
+    def action_view_contract(self):
+        contract_inv_ids=self.env['kts.contract.customer'].search([]) 
+        action = self.env.ref('kts_contract_management.action_kts_contract_customer') 
+        list_view_id = self.env.ref('kts_contract_management.kts_contract_customer_tree')
+        form_view_id = self.env.ref('kts_contract_management.kts_contract_customer_form')
+
+        result = {
+            'name': action.name,
+            'help': action.help,
+            'type': action.type,
+            'view_type':action.view_type,
+            'view_mode':action.view_mode,
+            'target': action.target,
+            'context': action.context,
+            'res_model': action.res_model,
+        }
+        return result
+    
+    @api.multi
+    def _prepare_contract(self):
+        self.ensure_one()
+        contract_vals = {
+            'name': self.client_order_ref or '',
+            'origin': self.name,
+            'partner_id': self.partner_invoice_id.id,
+        }
+        return contract_vals
+    
+    @api.multi
+    def action_contract_create(self, grouped=False, final=False):
+        contract_obj = self.env['kts.contract.customer']
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+        contracts = {}
+
+        for order in self:
+            group_key = order.id if grouped else (order.partner_id.id, order.currency_id.id)
+            for line in order.order_line.sorted(key=lambda l: l.qty_to_invoice < 0):
+                if float_is_zero(line.qty_to_invoice, precision_digits=precision):
+                    continue
+                if group_key not in contracts:
+                    contracts[group_key] = order
+                elif group_key in contracts and order.name not in contracts[group_key].origin.split(', '):
+                    contracts[group_key].write({'origin': contracts[group_key].origin + ', ' + order.name})
+                if line.qty_to_invoice > 0:
+                    line.contract_line_create(contracts[group_key].id, line.qty_to_invoice)
+                elif line.qty_to_invoice < 0 and final:
+                    line.contract_line_create(contracts[group_key].id, line.qty_to_invoice)
+
+        return True
+
+        
+    
+class Kts_sale_order_line(models.Model):
+    _inherit='sale.order.line'
+    
+    @api.multi
+    def _prepare_service_line(self, qty):
+        self.ensure_one()
+        res = []
+        if self.contract_id:  
+           for i in range(0,int(qty)):
+               res.append({
+                 'name': self.product_id.name,
+                 'partner_id': self.order_id.partner_invoice_id.id,
+                 'type':'sys_gen',
+                 'service_type':'installation',
+                 'logged_by':  self.order_id.user_id and self.order_id.user_id.id,   
+                 'state':'new',
+             
+ })
+        return res
+
+    
+    
+    @api.multi
+    def _prepare_contract_line(self, qty):
+        self.ensure_one()
+        res = []
+        if self.contract_id:  
+           for i in range(0,int(qty)):
+               res.append({
+                 'origin': self.order_id.name,
+                 'partner_id': self.order_id.partner_invoice_id.id,
+                 'type':self.contract_id.type,
+                 'contract_id':self.contract_id.id,
+                 'product_id': self.product_id.id or False,     
+                 'val_duration': self.contract_id.val_duration,
+                 'no_proac_visit':self.contract_id.no_proac_visit,
+                 'no_ins_visit': self.contract_id.no_ins_visit, 
+                 'no_free_visit':self.contract_id.no_free_visit,
+                 'fre_pro_visit':self.contract_id.fre_pro_visit,
+                 'date_creation':fields.Datetime.now(),
+                 'date_activation':fields.Datetime.now(),
+                 'team_id': self.order_id.team_id.id,   
+                 'state':'inprocess',
+              })
+        return res
+
+    @api.multi
+    def contract_line_create(self, contract_id, qty):
+        lot_ids=[]
+        lot1=[]
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+        for line in self:
+            if not float_is_zero(qty, precision_digits=precision) and self.contract_id:
+                vals = line._prepare_contract_line(qty=qty)
+                vals_service= line._prepare_service_line(qty=qty)
+                for pick in self.order_id.picking_ids:
+                    if pick.state=='done':
+                       for line in pick.pack_operation_product_ids:
+                                if line.pack_lot_ids:
+                                    for lot in line.pack_lot_ids:
+                                        lot_ids.append({'lot_ids':lot.lot_id.id})
+             
+                for lot_id in lot_ids:
+                      lot1.append(lot_id['lot_ids'])
+                ctx = self._context.copy()
+                ctx.update({'default_origin':self.order_id})
+                for val in vals:
+                     self.env['kts.contract.customer'].create(val)
+               
+                for val1 in vals_service:
+                     self.env['kts.service.management'].create(val1)     
+
+class Kts_sale_make_invoice_wizard(models.Model):
+    _inherit='sale.advance.payment.inv'    
+    @api.multi
+    def create_invoices(self):
+        sale_orders = self.env['sale.order'].browse(self._context.get('active_ids', []))
+        if self.advance_payment_method == 'delivered':
+            sale_orders.action_contract_create()
+        elif self.advance_payment_method == 'all':
+            sale_orders.action_contract_create(final=True)
+        res=super(Kts_sale_make_invoice_wizard, self).create_invoices()
+        return res     
+   
+    
+    
+class Kts_contract_invoice(models.Model):
+     _name='kts.contract.customer'
+     _inherit='kts.contract'
+     '''
+     @api.model
+     def _default_serial_no(self):
+         lot_ids=[]
+         vals=[]
+         if self._context.get('default_origin'):
+            SO = self._context.get('default_origin') 
+         
+            for pick in SO.picking_ids:
+                if pick.state=='done':
+                     for line in pick.pack_operation_product_ids:
+                              if line.pack_lot_ids:
+                                  for lot in line.pack_lot_ids:
+                                      lot_ids.append({'lot_ids':lot.lot_id.id})
+            for lot_id in lot_ids:
+                vals.append(lot_id['lot_ids'])            
+            return {'lot_ids':vals}
+     '''   
+
+     name=fields.Char('Name',required=False,)
+     contract_id = fields.Many2one('kts.contract',string='Contract Ref')
+     product_id = fields.Many2one('product.product',string='Product')
+     partner_id = fields.Many2one('res.partner','Customer')   
+     origin = fields.Char('Source Document')
+     date_creation = fields.Date('Date of Creation', default=fields.Datetime.now())
+     date_activation = fields.Date('Date of Activation', default=fields.Datetime.now())
+     team_id = fields.Many2one('crm.team', string='Sales Team',)
+     serial_no =fields.Char('Serial No')
+     lot_ids = fields.Many2one('stock.production.lot',string='Serial No',)
+     state = fields.Selection([
+        ('draft', 'new'),
+        ('inprocess', 'In process'),
+        ('act','Activated'),
+        ('cancel', 'Cancelled'),
+        
+        ], string='Status', readonly=True, copy=False, index=True, track_visibility='onchange', default='draft')    
+     _defaults = {
+             'name': lambda self, cr, uid, context: self.pool.get('ir.sequence').next_by_code(cr, uid, 'kts.contract.customer') or _('Unknown Pack')
+            }               
+     
+     @api.multi
+     def action_inprocess(self):
+         self.ensure_one()
+         self.write({'state':'inprocess'})
+     
+     @api.multi
+     def action_activate(self):
+         self.ensure_one()
+         if not self.lot_ids:
+             raise UserError(_('Please give serial number'))
+         self.write({'state':'act'})
+     
+     @api.multi
+     def action_cancel(self):
+         self.ensure_one()
+         self.write({'state':'cancel'})
+         
+     @api.onchange('date_creation','date_activation','val_duration')
+     def onchange_for_validity_duration(self):
+          if self.date_creation == self.date_activation:
+              date_creation_dt = fields.Datetime.from_string(self.date_creation)
+              dt = date_creation_dt + relativedelta(months=self.val_duration)
+              self.val_duration_date = fields.Datetime.to_string(dt) 
+          else:
+              date_activation_dt = fields.Datetime.from_string(self.date_activation)
+              dt = date_activation_dt + relativedelta(months=self.val_duration)
+              self.val_duration_date = fields.Datetime.to_string(dt)
+     
+     @api.onchange('origin','product_id','state')  
+     def onchange_serial_no(self):
+         lot_ids=[]
+         vals=[]
+         if self._context:
+             so = self.origin or self._context.get('default_origin') 
+             SO = self.env['sale.order'].search([('name','=',so)])
+             for pick in SO.picking_ids:
+                     if pick.state=='done':
+                         for line in pick.pack_operation_product_ids:
+                              if line.pack_lot_ids:
+                                  for lot in line.pack_lot_ids:
+                                      lot_ids.append({'lot_ids':lot.lot_id.id})
+             for lot_id in lot_ids:
+                 vals.append(lot_id['lot_ids'])
+             return {'domain':{'lot_ids':[('id','in',vals)]} } 
+         else:
+             return
+    
+    

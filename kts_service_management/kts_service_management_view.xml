@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  
+  	<record id="view_kts_employee_disciplinary_form" model="ir.ui.view">
+            <field name="name">res.kts.employee.disciplinary.inherit</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='public']" position="after">
+                    <page name="disciplinary" string="Disciplinary Details">
+                          <field name="disciplinary_line"/>
+                    </page>
+                </xpath>
+                <xpath expr="//page[@name='disciplinary']" position="after">
+               		<page name="payslip" string="Pay Slips">
+                          
+                    </page>
+                </xpath>
+                <xpath expr="//page[@name='payslip']" position="after">
+                    <page name="payroll" string="Payroll Details">
+                      	<group>
+                          <field name="pan_no"/>
+                          <field name="pf_no"/>
+                          <field name="esic_no"/>
+                          <field name="uan_no"/>
+                          <field name="bank_name"/>
+                        </group>                          
+                    </page>
+               </xpath>
+               
+                <xpath expr="//page[@name='public']/group/group/field[@name='coach_id']" position="after">
+                      <field name="technician"/>
+                      <field name="offroll"/>
+                </xpath>
+               
+            </field>
+        </record>
+
+  	<record id="view_kts_disciplinary_details_tree" model="ir.ui.view">
+            <field name="name">kts.disciplinary.details.tree</field>
+            <field name="model">kts.disciplinary.details</field>   
+            <field name="arch" type="xml">
+                <tree string="Disciplinary Details">
+                  <field name="log_date"/>
+                  <field name="disciplinary_comment"/>
+                  <field name="action_by"/>
+                  
+                </tree>        
+            </field>
+     </record>
+    
+    <record id="view_kts_disciplinary_details_form" model="ir.ui.view">
+            <field name="name">kts.disciplinary.details.form</field>
+            <field name="model">kts.disciplinary.details</field>   
+            <field name="arch" type="xml">
+                <form string="Disciplinary Details">
+                 <sheet>
+                        <group name="top">
+                       	  <field name="log_date"/>
+                  		  <field name="disciplinary_comment"/>
+                  		  <field name="action_by" attrs="{'readonly': True}" />		                 
+			            </group>
+                 </sheet>
+                </form>        
+            </field>
+     	</record>
+       
+    <record id="view_kts_visit_details_tree" model="ir.ui.view">
+            <field name="name">kts.visit.details.tree</field>
+            <field name="model">kts.visit.details</field>   
+            <field name="arch" type="xml">
+                <tree string="Visit Details" create="false">
+                   <field name="visible_emp" invisible="1"/>
+                   <field name="emp_id" attrs="{'invisible': [('visible_emp', '==', True)]}"/>
+                   <field name="start_time"/>
+                  <field name="end_time"/>
+                  <field name="note"/>
+                  <field name="attachment"/>
+                  
+                 
+                  <field name="product_id"/>
+                  <field name="product_unit"/>
+                  <field name="product_price"/>                      
+                  <field name="invoice_flag"/>
+                  
+                </tree>        
+            </field>
+     </record>
+     
+       	
+    <record id="view_kts_sla_tree" model="ir.ui.view">
+            <field name="name">kts.sla.tree</field>
+            <field name="model">kts.sla</field>   
+            <field name="arch" type="xml">
+                <tree string="Service Level Agreement">
+                  <field name="problem_priority"/>
+                  <field name="no_of_days"/>
+                </tree>        
+            </field>
+     </record>
+     
+      <record id="view_kts_sla_form" model="ir.ui.view">
+            <field name="name">kts.sla.form</field>
+            <field name="model">kts.sla</field>   
+            <field name="arch" type="xml">
+                <form string="Service Level Agreement">
+                 <sheet>
+                        <group name="top">
+                                <field name="problem_priority" widget="priority" />
+                                <field name="no_of_days"/>
+                        </group>
+                 </sheet>
+                </form>        
+            </field>
+     	</record>
+     
+     <record id="view_kts_service_management_filter" model="ir.ui.view">
+            <field name="name">kts.service.management.select</field>
+            <field name="model">kts.service.management</field>
+            <field name="context">{"search_default_type":1}</field>
+            <field name="arch" type="xml">
+                <search string="Search Type">
+                    <filter name="type" string="Type" domain="[('type','!=','report_customer')]"/>
+                    <filter string="My Service" domain="[('assigned_to','=',uid)]"/>
+               
+	               <group expand="0" string="Group By">
+	               <filter string="Responsible" name="Resposible" context="{'group_by':'assigned_to'}"/>
+	               
+	               <filter string="Status" name="State" context="{'group_by':'state'}"/>
+	               </group>
+	                
+               </search>
+            </field>
+        </record>
+        
+	<record id="view_kts_service_management_filter1" model="ir.ui.view">
+            <field name="name">kts.service.management.select1</field>
+            <field name="model">kts.service.management</field>
+            <field name="context">{"search_default_type":1}</field>
+            <field name="arch" type="xml">
+                <search string="Search Type">
+                    <filter name="type" string="Type" domain="[('type','!=','sys_gen')]"/>
+                    <filter string="My Service" domain="[('assigned_to','=',uid)]"/>
+               
+                    <group expand="0" string="Group By">
+                    <filter string="Responsible" name="Resposible" context="{'group_by':'assigned_to'}"/>
+                   
+                    <filter string="Status" name="State" context="{'group_by':'state'}"/>
+                    </group>
+               
+               
+               </search>
+            </field>
+        </record>        
+     
+     	<record id="action_kts_sla" model="ir.actions.act_window">
+       		<field name="name">Service Level Agreement</field>
+            <field name="res_model">kts.sla</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+     	</record>
+     
+      <record id="view_kts_service_management_tree" model="ir.ui.view">
+            <field name="name">kts.service.management.tree</field>
+            <field name="model">kts.service.management</field>   
+            <field name="context">{"search_default_filter_type":1}</field>
+            <field name="arch" type="xml">
+                <tree string="Issue">
+                  <field name="service_id"/>
+                  <field name="name"/>
+                  <field name="partner_id"/>
+                  <field name="invcontract_id"/>
+                  <field name="priority"/>
+                  <field name="logged_by"/>
+                  <field name="assigned_to" />  
+                  <field name="state"/>
+                </tree>        
+            </field>
+     </record>
+      
+      <record id="view_kts_service_management_form" model="ir.ui.view">
+            <field name="name">kts.service.management.form</field>
+            <field name="model">kts.service.management</field>   
+            <field name="arch" type="xml">
+                <form string="Issue">
+                <header>
+                	<field name="inv_call" invisible="1"/>
+                	<field name="service_inv_flag" invisible="1"/>
+                	<field name="material_inv_flag" invisible="1"/>
+                	<button name="action_log_problem" string="Confirm Problem" type="object" states="draft" class="btn-primary" groups="kts_service_management.group_service_management_team"/>
+                	<button name="action_assign_problem" string="Assign" type="object" states="new" class="btn-primary" groups="kts_service_management.group_service_management_manager"/>
+                	<button name="action_accept_problem" string="Accept" type="object" states="assigned" class="btn-primary"/>
+                	<button name="action_inprogress_problem" string="Inprogress" type="object" states="accepted" class="btn-primary"/>
+                	<button name="action_done_problem" string="Done" type="object" states="in_process" class="btn-primary"/>
+                	<button name="action_cancel_problem" string="Cancel" type="object" states="new,assigned" class="btn-primary"/>
+                	<button name="action_reopen_problem" string="Re-Open" type="object" states="done" class="btn-primary"/>
+                    <button name="kts_create_invoice" string="Service Invoice" type="object" attrs="{'invisible':['|',('state','not in',('done')),('service_inv_flag','!=',False)]}" class="btn-primary" options='{"always_reload": True}'/>
+                    <button name="kts_payment_invoice" string="Material Invoice" type="object" attrs="{'invisible': ['|',('state','not in',('done')),('material_inv_flag','!=',False)]}" class="btn-primary" domain="[('service','=',True)]" options='{"always_reload": True}'/>
+                    
+                    <field name="state" widget="statusbar" statusbar_visible="draft,new,assigned,accepted,in_process,done,cancel"/>
+                </header>
+                    <sheet>
+                        <group name="top">
+                             <group name="left">
+                                <field name="name" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
+                                <field name="service_id" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
+                                <field name="partner_id" attrs="{'readonly': [('state', 'not in', ('draft',))]}"  domain="[('customer','=',True)]" context="{'search_default_customer':1, 'show_address': 1}"/>
+                                <field name="end_customer_name" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
+                                <field name="end_customer_mob" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
+                     
+                                <field name="address" attrs="{'readonly': [('state', 'not in', ('draft',))]}" nolable="1"/>
+                                <field name="mobile" attrs="{'readonly': [('state', 'not in', ('draft',))]}" />
+                                <field name="email" attrs="{'readonly': [('state', 'not in', ('draft',))]}" />
+                                <field name="problem_logged" attrs="{'invisible': [('problem_logged', '!=', True)]}" readonly="1"  />
+                                <field name="internal_closure_code" invisible="1"/>
+                             </group>
+                             <group name="right">
+                                <field name="type" attrs="{'readonly': True}" widget="selection"/>
+                                <field name="priority" attrs="{'readonly': [('problem_logged', '==',True )]}" widget="priority"/>
+                                <field name="service_type" attrs="{'readonly': [('state', 'not in', ('draft',))]}" widget="selection"/>
+                                <field name="logged_by" attrs="{'readonly': True}" />
+                                <field name="assigned_to" attrs="{'readonly': [('state', 'not in', ('draft','new',))]}" groups="kts_service_management.group_service_management_manager" />
+                                <field name="nature_of_complaint" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
+                                <field name="invcontract_id"  options='{"always_reload": True}' attrs="{'readonly': [('state', 'not in', ('draft',))]}" /> 
+                                <field name="service" widget="selection"/>
+                                <field name="vendor_id" attrs="{'invisible': [('service', '==', False)],'required': [('service', '!=', False)]}" />
+                               
+                                <field name="closure_code"/>
+                             </group>
+                        </group>
+                        <notebook>
+	                        <page string="Other Detils">
+	                        	<group string="" name="other_details">
+    	                    		<field name="date_logged"/>
+    	                    		<field name="due_date"/>
+									<field name="date_assigned"/>
+            	                    <field name="date_accepted"/>
+                	                <field name="date_inprocess"/>
+                    	            <field name="date_done"/>
+                        	        <field name="date_cancel" attrs="{'invisible': [('state', '!=', 'cancel')]}"/>
+                        	    </group>    
+                    		</page>
+                    		
+                    		<page string="Visit Detils">
+    	                    		<field name="visit_line">
+                    		           <tree string="Visit Lines">
+                    		             <field name="visible_emp" invisible="1"/>
+                    		             <field name="emp_id" attrs="{'invisible': [('visible_emp', '!=', False)]}" />
+                                         <field name="start_time"/>
+                                         <field name="end_time"/>
+                                         <field name="note"/>
+                                         <field name="attachment"/>
+                                         
+                                         <field name="state"/>                    	
+                    		           </tree>       
+                                 </field>
+                    		</page>
+                    		<page string="Picking Lines" name='picking_lines'>
+                    		    <field name="picking_lines" mode="tree"  readonly="1"/> 
+                    		</page>
+                            <page string="Invoice Lines" name='invoice_lines'>
+                                <field name="invoice_lines" context="{'tree_view_ref':'account.invoice_tree','form_view_ref':'account.invoice_form' ,'default_type':'out_invoice','type':'out_invoice','journal_type': 'sale',}" readonly="1"/> 
+                            </page>
+                            
+                    	</notebook>
+                  </sheet>
+                </form>        
+            </field>
+     </record>
+     
+       <record id="action_kts_service_management_after" model="ir.actions.act_window">
+       		<field name="name">Service Management After</field>
+            <field name="res_model">kts.service.management</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>  
+            <field name="context">{'type_flag':False}</field>
+            <field name="domain">[('type','!=','sys_gen')]</field>   
+            <field name="search_view_id" ref="view_kts_service_management_filter"/>       
+       </record>
+       
+       <record id="action_kts_service_management" model="ir.actions.act_window">
+       		<field name="name">Service Management</field>
+            <field name="res_model">kts.service.management</field>
+            <field name="view_type">form</field>
+            <field name="context">{'type_flag':True}</field>
+            <field name="domain">[('type','!=','report_customer')]</field>
+            <field name="view_mode">tree,form</field>            
+             <field name="search_view_id" ref="view_kts_service_management_filter1"/>
+       </record>
+            
+       <record id="view_kts_visit_details_form" model="ir.ui.view">
+            <field name="name">kts.visit.details.form</field>
+            <field name="model">kts.visit.details</field>   
+            <field name="arch" type="xml">
+                <form string="Visit Details">
+                 <header>
+                 <button name="action_assign" string="Assign Visit" type="object" states="draft" class="btn-primary" readonly="0"/>    
+                 <button name="action_process" string="In Process" type="object" states="assigned" class="btn-primary" readonly="0"/>    
+                 <button name="action_done" string="Done" type="object" states="in_progress" class="btn-primary" readonly="0"/>    
+                 <button name="action_cancel" string="Cancel" type="object" states="draft,assigned" class="btn-default" readonly="0"/>    
+                 
+                 <field name="state" widget="statusbar" statusbar_visible="draft,assigned,in_progress,done,cancel"/>
+                 </header>
+                 <sheet>
+                        <group name="top">
+                       	  <field name="visible_emp" invisible="1"/>
+                    	  <field name="emp_id" attrs="{'invisible': [('visible_emp', '!=', False)]}" />		                  
+                    	  <field name="start_time" attrs="{'readonly':[('state','=','done')]}"/>
+		                  <field name="end_time" attrs="{'readonly':[('state','=','done')]}"/>
+		                  <field name="note" attrs="{'readonly':[('state','=','done')]}"/>
+		                  <field name="attachment" attrs="{'readonly':[('state','=','done')]}"/>
+		                  <field name="product_id"  attrs="{'readonly':[('state','=','done')]}"/>
+		                  <field name="product_unit" attrs="{'readonly':[('state','=','done')]}"/>
+		                  <field name="product_price" attrs="{'readonly':[('state','=','done')]}"/>
+		                  <field name="invoice_flag" attrs="{'readonly':[('state','=','done')]}"/>
+		              
+                  		  
+			            </group>
+                 </sheet>
+                </form>        
+            </field>
+     	</record>
+        
+        
+       
+       <menuitem
+            id="base.service_management_root"
+            name="Service" 
+            groups="kts_service_management.group_service_management_manager"
+            sequence="20"/>
+       
+       
+       <menuitem
+            id="menu_kts_service_management"
+            name="Service Management"
+            groups="kts_service_management.group_service_management_manager"
+            parent="base.service_management_root"    
+            sequence="1"/>
+  		
+  	 	<menuitem
+            id="menu_kts_service_management_configuration"
+            name="Configuration" 
+            groups="kts_service_management.group_service_management_manager"
+            parent="base.service_management_root"
+            sequence="2"/>
+            
+  	 	<menuitem
+            id="menu_action_kts_after_service_management"
+            name="After Sales"
+            groups="kts_service_management.group_service_management_manager"
+            action="action_kts_service_management_after"
+            parent="menu_kts_service_management"    
+            sequence="18"/>                             
+  		          
+       <menuitem
+            id="menu_action_kts_service_management"
+            name="Service"
+            groups="kts_service_management.group_service_management_manager"
+            action="action_kts_service_management"
+            parent="menu_kts_service_management"    
+            sequence="19"/>  
+        
+       <menuitem
+            id="menu_action_kts_SLA"
+            name="SLA"
+            groups="kts_service_management.group_sla"
+            action="action_kts_sla"
+            parent="menu_kts_service_management_configuration"    
+            sequence="20"/>                             
+       
+                                        
+              
+       <record id="kts_contract_customer_service_line_form" model="ir.ui.view">
+        <field name="name">kts.contract.customer.service.line.form</field>
+        <field name="model">kts.contract.customer</field>
+        <field name="inherit_id" ref="kts_contract_management.kts_contract_customer_form"/>
+		        <field name="arch" type="xml">
+			          <field name="partner_id" position="after">
+			           <field name="end_customer_name"/>
+			           <field name="end_customer_mob"/>
+			          </field> 
+					<group name="top" position="after">
+				        
+				        <field name="service_ids" >
+				          <tree string="Services For This Contract">
+						          
+						          <field name="name"/>
+						          <field name="partner_id"/>
+						          <field name="service_type"/>
+						          <field name="due_date"/>
+						          <field name="type"/>
+						          <field name="logged_by"/>
+						          <field name="assigned_to"/>
+						          <field name="state"/>
+						          
+				          </tree>
+				        
+				        </field>
+				    </group> 
+				        
+		        </field>
+        </record>
+       
+       
+        
+       
+        
+        <record id="kts_view_contract_stock_move_form" model="ir.ui.view">
+            <field name="name">kts.contract.stock.move.form.inherit</field>
+            <field name="model">stock.move</field>
+            <field name="inherit_id" ref="stock.view_move_picking_form"/>     
+                 <field name="arch" type="xml">
+                  <field name="product_uom" position="after">
+                     <field name="service_flag" invisible="1"/>
+                     <field name="contract_id"/>
+                     <field name="invoice_flag" />
+                 </field>
+            </field>
+        </record>
+        
+        <record id="kts_view_contract_stock_move_tree_inherit" model="ir.ui.view">
+            <field name="name">kts.contract.stock.move.tree.inherit1</field>
+            <field name="model">stock.move</field>
+            <field name="inherit_id" ref="stock.view_move_picking_tree"/>     
+            <field name="arch" type="xml">
+            <field name="product_uom" position="after">
+                <field name="picking_type_id" invisible="1"/>
+                <field name="service_flag" invisible="1"/>
+                  <field name="contract_id" attrs="{'invisible':[('service_flag','=',True)]}"/>
+                 
+                  <field name="invoice_flag" attrs="{'invisible':[('service_flag','=',False)]}" />
+               </field>
+            </field>
+        </record>         
+        
+        <record id="view_kts_service_log_conf_tree" model="ir.ui.view">
+            <field name="name">kts.service.log.conf.tree</field>
+            <field name="model">kts.service.log.conf</field>   
+            <field name="arch" type="xml">
+                <tree string="Service Log Configuration">
+                  <field name="name"/>
+                  <field name="no_days"/>
+                </tree>        
+            </field>
+        </record>
+     
+      <record id="view_kts_service_log_conf_form" model="ir.ui.view">
+            <field name="name">kts.service.log.conf.form</field>
+            <field name="model">kts.service.log.conf</field>   
+            <field name="arch" type="xml">
+                <form string="Service Log Configuration">
+                  <group>
+                  <field name="name"/>
+                  <field name="no_days"/>
+                </group>
+                </form>        
+            </field>
+        </record>
+     
+       <record id="action_kts_service_log_conf" model="ir.actions.act_window">
+            <field name="name">Service Log Conf</field>
+            <field name="res_model">kts.service.log.conf</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+        </record>
+     
+       
+       <menuitem
+            id="menu_action_kts_service_log_conf"
+            name="Service Log Conf"
+            action="action_kts_service_log_conf"
+            parent="menu_kts_service_management_configuration"    
+            sequence="22"/>                             
+       
+       <record id="kts_view_stock_picking_service_form_inherit" model="ir.ui.view">
+            <field name="name">stock.picking.service.form.inherit</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>     
+                 
+                 <field name="arch" type="xml">
+                    
+                    <field name="origin" position="after">
+                       <field name="service_flag" invisible="1"/>
+                       <field name="service_id" attrs="{'invisible':[('service_flag','=',False)],'required':[('service_flag','=',True)]}"/>
+                    </field>               
+                    
+                 </field>
+       </record> 
+        
+        <record id="kts_view_stock_picking_type_service_form" model="ir.ui.view">
+            <field name="name">kts.stock.picking.type.service.form</field>
+            <field name="model">stock.picking.type</field>
+            <field name="inherit_id" ref="stock.view_picking_type_form"/>     
+                 <field name="arch" type="xml">
+                 <field name="barcode_nomenclature_id" position="after">
+                 <field name="service_flag"/>
+                 
+                 </field>
+                 
+                 </field>
+            </record>
+        <record id="kts_view_customer_service_account_invoice_form" model="ir.ui.view">
+             <field name="name">kts.customer.invoice.account.invoice.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_form"/>
+                   <field name="arch" type="xml">
+                   <field name="team_id" position="after">
+                       <field name="service_id" readonly="1"/>
+                   </field>
+                   </field>
+        </record>
+        
+        
+</odoo>    

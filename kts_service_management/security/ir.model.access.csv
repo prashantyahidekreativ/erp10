@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kts_service_management_manager,access.kts.service.management.manager,model_kts_service_management,kts_service_management.group_service_management_manager,1,1,1,1
+access_kts_service_management_team,access.kts.service.management.team,model_kts_service_management,kts_service_management.group_service_management_team,1,1,1,0
+access_kts_sla,access_kts_sla,model_kts_sla,kts_service_management.group_sla,1,1,1,1

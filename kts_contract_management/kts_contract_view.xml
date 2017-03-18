@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>       
+      <record id="view_kts_contract_tree" model="ir.ui.view">
+            <field name="name">kts.contract.tree</field>
+            <field name="model">kts.contract</field>   
+            <field name="arch" type="xml">
+                <tree string="Contract">
+                    <field name="name" string="Name"/>
+                    <field name="type" widget="selection"/>
+                    <field name="val_duration"/>
+                    <field name="val_duration_date"/>
+                    <field name="no_proac_visit"/>
+                    <field name="no_ins_visit" />
+                    <field name="due_days"/>
+                    <field name="no_free_visit" />
+                    <field name="fre_pro_visit" widget="selection"/>
+                </tree>
+            </field>
+       </record>
+        <record id="view_kts_contract_form" model="ir.ui.view">
+            <field name="name">kts.contract.form</field>
+            <field name="model">kts.contract</field>   
+            <field name="arch" type="xml">
+             <form string="Contract">
+               <sheet> 
+                  
+                  <group name="top">
+                           <group name="left">
+                              <field name="name" string="Name"/>
+                              <field name="type" widget="selection"/>
+                            </group>
+                            <group name="right">
+                              <field name="val_duration" required="1"/>
+                              <field name="val_duration_date" required="1"/>
+                              <field name="no_proac_visit"/>
+                              <field name="no_ins_visit" />
+                              <field name="due_days"/>
+                              <field name="no_free_visit" />
+                              <field name="fre_pro_visit" widget="selection"/>
+                            </group>
+                  </group>
+                 <notebook>
+                   <page string="Part lines" name="part_line">
+                       <field name="contract_line" mode="tree">
+                       <field name="product_id"/>
+                       <field name="no_to_replace"/>
+                       </field>
+                   </page>
+                   <page string="Note" name="note">
+                       <field name="note"/>
+                   </page>
+                 </notebook>      
+                  
+               </sheet> 
+              </form>
+             </field>
+        </record>
+         
+         
+       <record id="action_kts_contract" model="ir.actions.act_window">
+            <field name="name">Contract Master</field>
+            <field name="res_model">kts.contract</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+       </record>
+       
+       <menuitem
+            id="base.contract_root"
+            name="Contract"
+            sequence="18"/>
+       <menuitem
+            id="menu_kts_contract_root"
+            name="Contract management"
+            parent="base.contract_root"    
+            sequence="1"/>
+       <menuitem
+            id="menu_action_kts_contract"
+            action="action_kts_contract"
+            parent="menu_kts_contract_root"    
+            sequence="16"/>     
+            
+        <record id="view_kts_contract_line_form" model="ir.ui.view">
+            <field name="name">kts.contract.line.form</field>
+            <field name="model">kts.contract.line</field>   
+            <field name="arch" type="xml">
+                <form string="Contract Line">
+                  <sheet>                    
+                  <group name="top">
+                           <group name="left">
+                              <field name="product_id" string="Product"/>
+                            </group>
+                            <group name="right">
+                              <field name="no_to_replace"/>
+                            </group>
+                    </group>
+                  </sheet> 
+                </form>
+             </field>
+        </record>
+       
+       <record id="view_kts_contract_line_tree" model="ir.ui.view">
+            <field name="name">kts.contract.line.tree</field>
+            <field name="model">kts.contract.line</field>   
+            <field name="arch" type="xml">
+                <tree string="Contract Line">
+                  <field name="product_id" string="Product"/>
+                  <field name="no_to_replace"/>  
+                </tree>
+             </field>
+       </record>                      
+       
+       <record id="kts_product_template_form" model="ir.ui.view">
+            <field name="name">kts.product.template.form</field>
+            <field name="model">product.template</field>   
+            <field name="inherit_id" ref="product.product_template_only_form_view"/>
+            <field name="arch" type="xml">
+               <xpath expr="//page[@name='sales']" position="after">           
+                    <page name="contract_line" string="Contract">
+                        <field name="contract_line_ids" mode="tree">
+                              <tree string="contract line" editable="bottom">
+                              <field name="contract_id"/> 
+                              <field name="val_duration_date"/>
+                              <field name="default_contract"/>
+                              </tree>
+                         </field>                   
+                    </page>
+               </xpath>
+            </field>
+        </record>
+        
+        <record id="kts_product_contract_line_tree" model="ir.ui.view">
+            <field name="name">kts.product.contract.line.tree</field>
+            <field name="model">kts.product.contract.line</field>   
+            <field name="arch" type="xml">
+                <tree string="Contract Line">
+                  <field name="contract_id" string="Contract"/>
+                  <field name="val_duration_date"/>
+                  <field name="default_contract"/>  
+                </tree>
+            </field>
+       </record>                
+       <record id="kts_sale_order_line_contract_form" model="ir.ui.view">
+        <field name="name">kts.sale.order.line.contract.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/tree/field[@name='price_unit']" position="after">
+                <field name="contract_id" />
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form/group/group/div[@name='discount']" position="after">
+                   <field name="contract_id" />     
+             </xpath>
+          
+            
+            
+            <xpath expr="//button[@name='action_view_invoice']" position="before">
+            <div class="oe_button_box" name="button_box">
+                 <button name="action_view_contract"
+                         type="object"
+                         class="oe_stat_button"
+                         icon="fa-pencil-square-o"
+                         attrs="{'invisible': [('contract_count', '=', 0)]}">
+                         <field name="contract_count" widget="statinfo" string="Contract"/>
+                        </button>
+                    </div>
+                    
+            
+            </xpath>
+        </field>
+       </record>   
+      
+       <record id="kts_contract_customer_tree" model="ir.ui.view">
+            <field name="name">kts.contract.customer.tree</field>
+            <field name="model">kts.contract.customer</field>   
+            <field name="arch" type="xml">
+                <tree string="Contract Line">
+                  <field name="name" string="Contract"/>
+                  <field name="partner_id"/>
+                  <field name="product_id"/>                   
+                  <field name="date_creation"/>
+                  <field name="lot_ids" />
+                  <field name="date_activation"/>
+                  <field name="origin"/>
+                </tree>
+            </field>
+       </record>                
+       
+       <record id="kts_contract_customer_form" model="ir.ui.view">
+            <field name="name">kts.contract.customer</field>
+            <field name="model">kts.contract.customer</field>   
+            <field name="arch" type="xml">
+                <form string="Contract Line" options="no_create">
+                  <header>
+                  <button name="amc_print" string="AMC/Contract Print" type="object" class="btn-primary" states="act"/>
+                  <button name="action_inprocess" string="In Process" type="object" states="draft" class="btn-primary"/>
+                  <button name="action_activate" string="Activated" type="object" states="inprocess" class="btn-primary"/>
+                  <button name="action_cancel" string="cancel" type="object" states="inprocess,act" /> 
+                  <field name="state" widget="statusbar" statusbar_visible="draft,inprocess,act,cancel"/>
+                  </header>
+                  
+                  <sheet>
+                  <group name="top">
+                       <group name="right">   
+                          <field name="name" string="Contract"/>
+                          <field name="partner_id" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="product_id" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>                   
+                          <field name="contract_id" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="type" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="team_id" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="lot_ids" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/> 
+                       </group>
+                       
+                       <group name="left">   
+                          <field name="date_creation" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="date_activation" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="origin" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="val_duration" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="val_duration_date" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="no_proac_visit" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="no_ins_visit" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="due_days" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="no_free_visit" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                          <field name="fre_pro_visit" widget="selection" attrs="{'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                       </group>
+                   </group>
+                 </sheet>  
+                </form>
+            </field>
+       </record>                
+       <record id="view_customer_contract_filter" model="ir.ui.view">
+            <field name="name">customer.contract.list.select</field>
+            <field name="model">kts.contract.customer</field>
+            <field name="arch" type="xml">
+                <search string="Search contract">
+                    <field name="name" string="Sales Order" filter_domain="[('name','ilike',self),]"/>
+                    <field name="lot_ids" string="Serial No"/>
+                    <field name="origin" string="Sale Order"/>
+                    <field name="partner_id" string="Customer Name"/>
+                </search>
+                </field>
+       </record>
+       <record id="action_kts_contract_customer" model="ir.actions.act_window">
+            <field name="name">Contract</field>
+            <field name="res_model">kts.contract.customer</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_customer_contract_filter"/> 
+            <field name="target">current</field>           
+       </record>
+       <menuitem
+            id="menu_kts_contract_customer"
+            action="action_kts_contract_customer"
+            name="Contract"
+            parent="menu_kts_contract_root"    
+            sequence="25"/>              
+</odoo>

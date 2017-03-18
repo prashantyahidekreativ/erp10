@@ -1,0 +1,143 @@
+<odoo>
+     
+     <record id="view_kts_utilities_conf_form" model="ir.ui.view">
+     <field name="name">kts.utilities.conf.form </field>
+     <field name="model">kts.utilities.conf</field>
+	     <field name="arch" type="xml">
+	       <form string="Utilties Configuration">
+	        <sheet>
+	         <group>
+			       <field name="name"/>
+			       <field name="product_id" required="1"/>
+			       <field name="life_time" required="1"/>
+			       
+			</group>      
+	        <notebook>
+			       <page string="Part Lines">
+			         <field name="part_lines"/>
+			       </page>
+	        </notebook>
+	       </sheet> 
+	       </form>	     
+	     </field>
+    </record>
+    
+    <record id="view_kts_utilities_conf_tree" model="ir.ui.view">
+     <field name="name">kts.utilities.conf.tree </field>
+     <field name="model">kts.utilities.conf</field>
+         <field name="arch" type="xml">
+           <tree string="Utilties Configuration">
+                   <field name="name"/>
+                   <field name="product_id"/>
+                   <field name="life_time"/>
+           </tree>       
+         </field>
+    </record>
+    <record id="action_kts_utilities_conf" model="ir.actions.act_window">
+            <field name="name">Utilities Conf</field>
+            <field name="res_model">kts.utilities.conf</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+    </record>
+    <menuitem
+            id="base.utiltity_root"
+            name="Utility"
+            sequence="20"/>
+       
+    <menuitem
+            id="kts_utilities_conf_root"
+            name="Utilities" 
+            parent="base.utiltity_root"
+            sequence="1"/>
+       
+       
+    <menuitem
+            id="menu_kts_utilities_conf"
+            name="Utilities Conf"
+            parent="kts_utilities_conf_root"    
+            action="action_kts_utilities_conf"
+            sequence="1"/>
+    
+    <record id="view_kts_utilities_lines_form" model="ir.ui.view">
+     <field name="name">kts.utilities.lines.form </field>
+     <field name="model">kts.utilities.line</field>
+         <field name="arch" type="xml">
+           <form string="Utilties Configuration Part">
+                 <sheet> 
+		             <group>
+		                   <field name="product_id" required="1"/>
+		                   <field name="expiry" required="1"/>
+		                   <field name="intimation_days" required="1"/>
+		                   <field name="onetime_flag"/>
+		            </group>      
+                 </sheet>  
+           </form>       
+         </field>
+    </record>
+    
+    <record id="view_kts_utilities_line_tree" model="ir.ui.view">
+     <field name="name">kts.utilities.lines.tree </field>
+     <field name="model">kts.utilities.line</field>
+         <field name="arch" type="xml">
+           <tree string="Utilties Configuration Part">
+                   <field name="product_id"/>
+                   <field name="expiry"/>
+                   <field name="intimation_days"/>
+                   <field name="onetime_flag"/>
+           </tree>       
+         </field>
+    </record>
+  
+  <record id="kts_contract_customer_utility_form" model="ir.ui.view">
+        <field name="name">kts.contract.customer.utility.form</field>
+        <field name="model">kts.contract.customer</field>
+        <field name="inherit_id" ref="kts_contract_management.kts_contract_customer_form"/>
+                <field name="arch" type="xml">
+                      <field name="lot_ids" position="after">
+                        <field name="utility_flag" attrs="{'invisible':[('type','=','amc')],'readonly':[('state','not in',('draft','inprocess'))]}"/>
+                      </field>
+                </field>
+  </record>
+     
+     <record id="kts_view_utility_calendar_event_form" model="ir.ui.view">
+            <field name="name">kts.utility.calendar.event.form</field>
+            <field name="model">calendar.event</field>
+            <field name="inherit_id" ref="calendar.view_calendar_event_form"/>     
+                 <field name="arch" type="xml">
+                   <field name="location" position="after">
+                      <field name="contract_ids" widget="many2many_tags" invisible="1"/>
+                      <field name="utility_event_flag" invisible="1"/>
+                   </field>
+                  
+                 </field>
+     </record> 
+     
+     <record id="kts_view_utility_calendar_event_search" model="ir.ui.view">
+            <field name="name">kts.utility.calendar.event.form1</field>
+            <field name="model">calendar.event</field>
+            <field name="inherit_id" ref="calendar.view_calendar_event_search"/>     
+                 <field name="arch" type="xml">
+                   <field name="privacy" position="after">
+                      <field name="contract_ids" />
+                      <filter string="Utility Events" name="utility_event_flag" domain="[('utility_event_flag','=',1)]" help="Utility Events"  />    
+                   </field>           
+                 </field>
+     </record> 
+     
+     <record id="action_calendar_event_utility" model="ir.actions.act_window">
+        <field name="name">Calendar Event</field>
+        <field name="res_model">calendar.event</field>
+        <field name="view_mode">calendar,tree,form</field>
+        <field name="view_id" ref="calendar.view_calendar_event_calendar"/>
+        <field name="context">{'search_default_utility_event_flag':1}</field>
+        <field name="search_view_id" ref="calendar.view_calendar_event_search"/>
+     </record>
+    
+    <menuitem
+            id="menu_kts_utilities_calendar_event"
+            name="Utility Calendar Event"
+            parent="kts_utilities_conf_root"    
+            action="action_calendar_event_utility"
+            sequence="2"/>
+            
+</odoo>
