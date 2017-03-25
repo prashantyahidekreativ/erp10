@@ -1,0 +1,62 @@
+<odoo>
+      <record id="kts_view_tarrif_master_form" model="ir.ui.view">
+            <field name="name">kts.view.tarrif.master.form</field>
+            <field name="model">kts.tarrif.master</field>      
+            <field name="arch" type="xml">
+                 <form string="Tarrif Master">
+                     <group>
+                         <field name="name"/>
+                         <field name="code"/>
+                         <field name="description"/>
+                     </group>
+                 </form>
+            </field>
+       </record>  
+       
+       <record id="kts_view_tarrif_master_tree" model="ir.ui.view">
+            <field name="name">kts.view.tarrif.master.tree</field>
+            <field name="model">kts.tarrif.master</field>   
+            <field name="arch" type="xml">
+                <tree string="Tarrif Master">
+                 <field name="name"/>
+                 <field name="code"/>
+                </tree>
+             </field>
+       </record>
+       <record id="action_kts_tarrif_master" model="ir.actions.act_window">
+            <field name="name">Tarrif Master</field>
+            <field name="res_model">kts.tarrif.master</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+       </record>
+       
+       <menuitem
+            id="menu_action_kts_tarrif_master"
+            name="Tarrif Master"
+            action="action_kts_tarrif_master"
+            parent="sales_team.menu_sale_config"    
+            sequence="40"/>
+       
+       <record id="kts_product_template_tarrif_view" model="ir.ui.view">
+        <field name="name">kts.product.template.tarrif.view</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <field name="uom_id" position="after">
+            <field name="tarrif_id"/>  
+            </field>       
+        </field>
+       </record> 
+       
+       <record id="view_kts_account_invoice_line_tariff_form" model="ir.ui.view">
+             <field name="name">kts.account.invoice.line.tarrif.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_form"/>
+                   <field name="arch" type="xml">
+                    <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='price_subtotal']" position="after">
+                         <field name="tarrif_id" invisible="1"/>
+                   </xpath>           
+                   </field>
+        </record> 
+               
+ </odoo>

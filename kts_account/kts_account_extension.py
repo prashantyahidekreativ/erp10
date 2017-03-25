@@ -661,9 +661,6 @@ class kts_dispatch_mode(models.Model):
 
 class kts_sale_order(models.Model):
     _inherit='sale.order'
-    
-    
-  
     @api.depends('order_line.price_subtotal','freight_charges','packing_charges',)
     def _compute_order_tax(self):
         self.ensure_one()

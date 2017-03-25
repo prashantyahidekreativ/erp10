@@ -1,0 +1,32 @@
+<odoo>
+    <record id="kts_view_partner_bank" model="ir.ui.view">
+            <field name="name">kts.partner.bank.view.form</field>
+            <field name="model">res.partner.bank</field>
+            <field name="inherit_id" ref="base.view_partner_bank_form"/>      
+            <field name="arch" type="xml">
+                 <field name="partner_id" position="after">
+                 <field name="acc_type_id"/>
+                 </field> 
+            
+            </field>
+    </record>
+    
+    <record id="kts_view_res_bank" model="ir.ui.view">
+         <field name="name">kts.res.bank.view.form</field>
+          <field name="model">res.bank</field>
+           <field name="inherit_id" ref="base.view_res_bank_form"/>      
+            <field name="arch" type="xml">
+                 <field name="bic" position="after">
+                     <field name="branch"/>
+                     <field name="mirc_code"/>
+                     <field name="ifsc_code"/>
+                     <field name="swift_code"/>
+                 </field> 
+                 <field name="city" position="replace"/>
+                 <field name="zip" position="after">
+                    <field name="city_id" class="oe_inline" placeholder="City"/>
+                 </field>
+            </field>
+    </record>
+  
+</odoo>

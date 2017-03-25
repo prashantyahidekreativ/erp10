@@ -1,0 +1,62 @@
+<odoo>
+     <record id="kts_view_serial_lot_form_extension" model="ir.ui.view">
+            <field name="name">stock.pack.operation.lots.form1</field>
+            <field name="model">stock.pack.operation</field>
+            <field name="inherit_id" ref="stock.view_pack_operation_lot_form"/>     
+                 <field name="arch" type="xml"> 
+                    <field name="product_id" position="after">
+                      <field name="autoserial_lot_gen" invisible="1"/>
+                      <field name="qty_received" attrs="{'invisible':[('autoserial_lot_gen','=',False)]}"/> 
+                      <field name="expiry_date" invisible="not context.get('only_create', False)"  />
+                    </field>
+                   <field name="qty_done" position="after">
+                      <button name="autogen_serialno" type="object" string="Generate serial" class="oe_right oe_highlight" attrs="{'invisible':[('autoserial_lot_gen','=',False)]}" invisible="not context.get('serial') or not context.get('only_create', False)"/>
+                      <button name="autogen_lotno" type="object" string="Generate Lot " class="oe_right oe_highlight" attrs="{'invisible':[('autoserial_lot_gen','=',False)]}" invisible="context.get('serial') or not context.get('only_create', False)"/>
+                      <button name="do_partial_plus" type="object" string="Partial Do Plus" class="oe_right oe_highlight" attrs="{'invisible':[('autoserial_lot_gen','=',False)]}" invisible="not context.get('serial') or context.get('only_create', False)"/>
+                      <button name="autogen_expiry_date" type="object" string="Generate Expiry date" class="oe_right oe_highlight" invisible="not context.get('only_create', False)"/>
+                   </field>
+                   <field name="qty_done" position="after">
+                     <button name="do_all_plus" type="object" string="All Done" class="oe_right oe_highlight" attrs="{'invisible':[('autoserial_lot_gen','=',False)]}" invisible="not context.get('serial') or context.get('only_create', False)"/>
+                   
+                   </field>
+                   <xpath expr="//field[@name='pack_lot_ids']/tree/field[@name='lot_name']" position="after">
+                         <field name="vendor_serial_no" invisible="not context.get('only_create', False)" readonly="0"/>
+                         <field name="expiry_date" invisible="not context.get('only_create', False)" readonly="0"/>
+                   </xpath>  
+                 
+                   <!--    
+                   <field name="pack_lot_ids" position="attributes">
+                   <attribute name="attrs">{'readonly':['|',('autoserial_lot_gen','=',True),('state', '=', 'done')]}</attribute>
+                   </field>
+                     -->
+            </field>
+    </record>     
+    <record id="kts_stock_production_lot_form" model="ir.ui.view">
+              <field name="name">kts.stock.production.lot.form</field>
+              <field name="model">stock.production.lot</field>
+              <field name="inherit_id" ref="stock.view_production_lot_form"/>     
+              <field name="arch" type="xml">
+               <field name="ref" position="after">
+                 <field name="vendor_serial_no"/>
+               </field>      
+              </field>
+    </record> 
+    
+    <record id="kts_view_stock_picking_form_inherit1" model="ir.ui.view">
+            <field name="name">stock.picking.form.inherit1</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>     
+                 
+                 <field name="arch" type="xml">
+                    <field name="origin" position="after">
+                    <field name="grn_no" attrs="{'invisible':[('picking_type_code','!=','incoming')]}"/>
+                    <field name="transporter_name" attrs="{'invisible':[('picking_type_code','!=','incoming')]}"/>
+                    <field name="chalan_no" attrs="{'invisible':[('picking_type_code','!=','incoming')]}"/>
+                 </field>               
+                  <xpath expr="//button[@name='force_assign']" position="replace"/>  
+                 </field>
+     </record> 
+            
+  
+</odoo>
+

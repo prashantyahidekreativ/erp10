@@ -7,13 +7,13 @@ from odoo.exceptions import UserError
 class kts_utilities_conf(models.Model):
     _name='kts.utilities.conf'
     name=fields.Char('Name')
-    product_id=fields.Many2one('product.template','Product')
+    product_id=fields.Many2one('product.product','Product')
     life_time=fields.Integer('Life of product(Months)')
     part_lines=fields.One2many('kts.utilities.line','utilities_id',string='Part Lines')
 
 class kts_utilties_product_part(models.Model):
     _name='kts.utilities.line'
-    product_id=fields.Many2one('product.template','Product')
+    product_id=fields.Many2one('product.product','Product')
     expiry=fields.Integer('Expiry Duration (Months)')
     intimation_days=fields.Integer('Intimation Days')
     utilities_id=fields.Many2one('kts.utilities.conf','utility Id')

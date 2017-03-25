@@ -1,0 +1,125 @@
+<odoo>
+     
+     <menuitem
+            id="menu_kts_master_address_country"
+            name="Country Master"
+            action="base.action_country"
+            parent="sales_team.menu_sale_config"
+            sequence="12"/>
+     
+     <menuitem
+            id="menu_kts_master_address_state"
+            name="Country State"
+            action="base.action_country_state"
+            parent="sales_team.menu_sale_config"
+            sequence="14"/>
+        
+        <!-- City -->
+        <record id="view_kts_state_city_tree" model="ir.ui.view">
+            <field name="name">kts.city.master.tree</field>
+            <field name="model">kts.city.master</field>
+            <field name="arch" type="xml">
+                <tree string="City">
+                    <field name="name"/>
+                    <field name="state_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_kts_state_city_form" model="ir.ui.view">
+            <field name="name">kts.city.master.form</field>
+            <field name="model">kts.city.master</field>
+            <field name="arch" type="xml">
+                <form string="City">
+                   <sheet>
+                    <group>
+                        <group>
+                          <field name="name"/> 
+                          <field name="state_id"/>
+                          <field name="country_id"/>
+                        </group>
+                        <group>
+                           <field name="zip"/>
+                        </group>
+                    </group>
+                   </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="kts_action_city_master" model="ir.actions.act_window">
+            <field name="name">City</field>
+            <field name="res_model">kts.city.master</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help"> Select Your City Here</field>
+        </record>
+
+        <menuitem action="kts_action_city_master" 
+        id="menu_kts_city_master" 
+        parent="sales_team.menu_sale_config" 
+        sequence="20" 
+          /> 
+        
+        <!-- Area -->
+        <record id="view_kts_city_area_tree" model="ir.ui.view">
+            <field name="name">kts.area.master.tree</field>
+            <field name="model">kts.area.master</field>
+            <field name="arch" type="xml">
+                <tree string="Area">
+                    <field name="name"/>
+                    <field name="zonecode"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_kts_city_area_form" model="ir.ui.view">
+            <field name="name">kts.area.master.form</field>
+            <field name="model">kts.area.master</field>
+            <field name="arch" type="xml">
+                <form string="Area">
+                    <sheet>
+                    <group>
+                        <field name="name"/> 
+                        <field name="zonecode"/>
+                       
+                    </group>
+                    </sheet>
+               </form>
+            </field>
+        </record>
+
+        <record id="action_kts_area_master" model="ir.actions.act_window">
+            <field name="name">Area</field>
+            <field name="res_model">kts.area.master</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help"> Select Your Area Here</field>
+        </record>
+
+        <menuitem action="action_kts_area_master" 
+        id="menu_kts_area_master" 
+        parent="sales_team.menu_sale_config" 
+        sequence="28" 
+         /> 
+     
+     <record id="kts_view_partner_view1" model="ir.ui.view">
+            <field name="name">kts.partner.view.form</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>      
+            <field name="arch" type="xml">
+               <field name="city" position="attributes">
+               <attribute name="invisible">True</attribute> 
+               </field>
+               <field name="state_id" position="replace"/>
+               <field name="zip" position="replace" />
+               <field name="country_id" position="after">
+                <field name="state_id" class="o_address_state" placeholder="State" />
+                 <field name="city_id" class="o_address_city" placeholder="City"/>
+                 <field name="area_id" placeholder="Area" />
+               <field name="zip" placeholder="ZIP" class="o_address_zip" />
+               </field>
+         </field> 
+          
+         </record>        
+ </odoo>

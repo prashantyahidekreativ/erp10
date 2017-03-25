@@ -1,0 +1,24 @@
+<odoo>
+  <record id="kts_view_master_partner" model="ir.ui.view">
+            <field name="name">kts.view.master.partner.form</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>      
+            <field name="arch" type="xml">
+            <field name="mobile" position="attributes">
+              <attribute name="required">1</attribute> 
+            </field>
+            <xpath expr="//page[@name='accounting']/group/group[@name='accounting_entries']" position="after">
+               <group string="Company Details" name="customer_details">
+               <field name="pan_no"/>
+               
+               <field name="ecc_no"/>
+               <field name="service_tax_no"/>
+               <field name="vat_tin_no"/>
+               <field name="cst_tin_no"/>
+               <field name="ssi_no"/>
+               <field name="excise_reg_no"/>
+              </group> 
+               </xpath>      
+           </field>
+   </record> 
+</odoo>
