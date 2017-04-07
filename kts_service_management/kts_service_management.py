@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import random
-
+import re
 class kts_disciplinary_details(models.Model):
     _name='kts.disciplinary.details'
     log_date=fields.Date(string='Date', copy=False,)
@@ -64,6 +64,7 @@ class kts_visit_details(models.Model):
     postponed_flag = fields.Boolean('Postponed Flag',default=False)
     postpone_id = fields.Many2one('kts.postpone.reason',string='Postpone Reason')
     sign = fields.Binary('Signature', attachment=True)
+    
     @api.model
     def create(self, vals):
         if vals.get('service_management_id'):
@@ -362,7 +363,9 @@ class kts_service_management(models.Model):
     def onchange_end_customer_mob(self):
         if self.end_customer_mob:
             if len(self.end_customer_mob) != 10:
-                raise UserError(_('Please enter valid mobile no')) 
+                match=re.search(r'^(\d{10})$',self.end_customer_mob)
+                if match == None:
+                   raise UserError(_('Please enter valid mobile no')) 
     
     @api.onchange('partner_id')
     def onchange_partner(self):
