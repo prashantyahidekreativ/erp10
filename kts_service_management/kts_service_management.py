@@ -40,8 +40,14 @@ class hr_employee(models.Model):
     uan_no=fields.Char('UAN No.')
     bank_name=fields.Char('Bank Name')
 
+class kts_postponement_reason(models.Model):
+    _name='kts.postpone.reason'
+    name=fields.Char('Name')
+    
+    
 class kts_visit_details(models.Model):
     _name='kts.visit.details'
+    
     name=fields.Char('Name')
     service_management_id=fields.Many2one('kts.service.management', string='Service Management', required=True, index=True,ondelete='cascade')
     emp_id = fields.Many2one('hr.employee', string='Employee Name', index=True)
@@ -54,8 +60,28 @@ class kts_visit_details(models.Model):
     product_price=fields.Float('Price')
     visible_emp = fields.Selection(related='service_management_id.service',)
     invoice_flag=fields.Boolean(string='Invoice',default=False )
-    state=fields.Selection([('draft','Draft'),('assigned','Assigned'),('in_progress','In Progress'),('done','Done'),('cancel','Cancel')],string='State',default='draft')
+    state=fields.Selection([('draft','Draft'),('assigned','Assigned'),('accepted','Accept'),('in_progress','In Progress'),('done','Done'),('cancel','Cancel')],string='State',default='draft')
+    postponed_flag = fields.Boolean('Postponed Flag',default=False)
+    postpone_id = fields.Many2one('kts.postpone.reason',string='Postpone Reason')
+    sign = fields.Binary('Signature', attachment=True)
+    @api.model
+    def create(self, vals):
+        if vals.get('service_management_id'):
+            service_id = vals.get('service_management_id')
+            service_obj = self.env['kts.service.management'].browse([service_id])
+            visit_lines = service_obj.visit_line.filtered(lambda r: r.state not in ('done','cancel'))
+            if visit_lines:
+                raise UserError(_('Check All visit lines are done/cancel to create new visit'))
+            else:
+                vals.update({'state':'assigned'})
+        return super(kts_visit_details, self).create(vals)
     
+    @api.multi
+    def unlink(self):
+        if self.service_management_id:
+            raise UserError(_('You can not delete visit lines either cancel it'))
+        else:
+            return super(kts_visit_details, self).unlink()
     @api.onchange('visible_emp')
     def onchange_visible_emp(self):
         if self.service_management_id.service:
@@ -106,15 +132,19 @@ class kts_visit_details(models.Model):
     
     @api.multi
     def action_process(self):
-        self.write({'state':'in_progress'})    
+        self.write({'state':'in_progress','start_time':fields.Datetime.now()})    
     
     @api.multi
     def action_done(self):
-        self.write({'state':'done'})    
+        self.write({'state':'done','end_time':fields.Datetime.now()})    
     
     @api.multi
     def action_cancel(self):
         self.write({'state':'cancel'})    
+    
+    @api.multi
+    def action_accepted(self):
+        self.write({'state':'accepted'})    
     
    
 class kts_nature_of_complaints(models.Model):
@@ -128,7 +158,7 @@ class kts_sla(models.Model):
 
 class kts_contract_customer_inv(models.Model):
     _inherit='kts.contract.customer'
-    service_ids=fields.One2many('kts.service.management','invcontract_id','service List') 
+    service_ids=fields.One2many('kts.service.management','invcontract_id',string='service List') 
     end_customer_name=fields.Char('End Customer Name')
     end_customer_mob=fields.Char('End Customer Moblie No')
     
@@ -294,9 +324,9 @@ class kts_service_management(models.Model):
     priority = fields.Selection([('0','Low'), ('1','Normal'), ('2','High'),('3','higher'),('4','highest'),('5','Very Urgent')], 'Priority',default='0')  
     logged_by = fields.Many2one('res.users', string='Logged by')
     problem_logged=fields.Boolean(string='Problem Logged', )
-    due_date=fields.Date(string='Due Date',  readonly=True,copy=False,)
+    due_date=fields.Date(string='Due Date',  readonly=True,copy=False, default=fields.Date.today())
     date_logged = fields.Datetime(string='Logged Date',  readonly=True, index=True,  copy=False)
-    assigned_to = fields.Many2one('res.users', string='Resposible')
+    assigned_to = fields.Many2one('hr.employee', string='Resposible')
     date_assigned = fields.Datetime(string='Assigned Date',  readonly=True, index=True,  copy=False)
     date_accepted = fields.Datetime(string='Accepted Date',  readonly=True, index=True,  copy=False)
     date_inprocess = fields.Datetime(string='Inprocess Date',  readonly=True, index=True,  copy=False)
@@ -327,34 +357,46 @@ class kts_service_management(models.Model):
     invoice_lines=fields.One2many('account.invoice','service_id',string='Invoice Lines',readonly=True)
     end_customer_name=fields.Char('End Customer Name')
     end_customer_mob=fields.Char('End Customer Moblie No')
-    
-    _defaults = {
-             'service_id': lambda self, cr, uid, context: self.pool.get('ir.sequence').next_by_code(cr, uid, 'kts.service.management.id') or _(0)
-            }         
+      
+    @api.onchange('end_customer_mob')
+    def onchange_end_customer_mob(self):
+        if self.end_customer_mob:
+            if len(self.end_customer_mob) != 10:
+                raise UserError(_('Please enter valid mobile no')) 
     
     @api.onchange('partner_id')
     def onchange_partner(self):
         if self.partner_id:
             contract_ids=self.env['kts.contract.customer'].search([('partner_id','=',self.partner_id.id),('state','=','act')])
             return {'domain':{'invcontract_id':[('id','in',contract_ids.ids)]}}
+    
     @api.model
     def create(self,vals):
         if self._context:
             if vals.get('type') == 'sys_gen':
                 vals.update({
-                             'name':self.env['ir.sequence'].next_by_code('kts.service.management') or 'New',
+                             'service_id':self.env['ir.sequence'].next_by_code('kts.service.management.id'), 
                              })
                  
             else:
-                vals.update({
-                             'name':self.env['ir.sequence'].next_by_code('kts.service.management1') or 'New',
+                vals.update({ 
                              'type':'report_customer',
                              'service_type':'maintainance',
+                             'service_id':self.env['ir.sequence'].next_by_code('kts.service.management.id1'),
                              })
                 
         return super(kts_service_management, self).create(vals)               
     
-   
+    @api.multi
+    def write(self,vals):
+        if vals.get('visit_line'):
+            check_visit_lines = self.visit_line
+            visit_line = vals.get('visit_line')
+            
+        res = super(kts_service_management, self).write(vals)
+        return res
+    
+    
     @api.multi
     def kts_prepare_invoice(self):
         self.ensure_one()
@@ -457,7 +499,7 @@ class kts_service_management(models.Model):
     @api.onchange('priority')
     def onchange_priority(self):
         self.ensure_one()  
-        if self.priority and self.type == 'report_customer':
+        if self.priority and not self.type == 'report_customer':
             rec = self.env['kts.sla'].search([('problem_priority','=',self.priority)])
             endDate=fields.Datetime.to_string(fields.Datetime.from_string(fields.Datetime.now()) + relativedelta(days=rec.no_of_days))
             self.update({'due_date':endDate})
@@ -498,7 +540,7 @@ class kts_service_management(models.Model):
         This function opens a window to compose an email, with the edi sale template message loaded by default
         '''
         if not self.assigned_to:
-            raise UserError(_('Please assign this issue to superwiser !'))
+            raise UserError(_('Please assign this issue to Resposible Person !'))
         r = random.randint(1000,9999)
         self.write({'state': 'assigned','date_assigned':datetime.today(),'internal_closure_code':r})
         
@@ -571,6 +613,16 @@ class kts_service_management(models.Model):
         This function opens a window to compose an email, with the edi sale template message loaded by default
         '''
         self.ensure_one()
+        if self.visit_line:
+            for line in self.visit_line:
+                if line.state not in ('done','cancel'):
+                    raise UserError(_('Visit lines are not in done/cancel state'))
+        
+        if self.picking_lines:
+            for line in self.picking_lines:
+                if line.state not in ('done','cancel'):
+                    raise UserError(_('Picking lines are not in done/cancel state'))
+
         self.write({'state': 'cancel'})
         return {}
     

@@ -147,8 +147,6 @@
                    
                     <filter string="Status" name="State" context="{'group_by':'state'}"/>
                     </group>
-               
-               
                </search>
             </field>
         </record>        
@@ -203,7 +201,7 @@
                         <group name="top">
                              <group name="left">
                                 <field name="name" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
-                                <field name="service_id" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
+                                <field name="service_id" readonly="1"/>
                                 <field name="partner_id" attrs="{'readonly': [('state', 'not in', ('draft',))]}"  domain="[('customer','=',True)]" context="{'search_default_customer':1, 'show_address': 1}"/>
                                 <field name="end_customer_name" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
                                 <field name="end_customer_mob" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
@@ -242,12 +240,12 @@
                     		</page>
                     		
                     		<page string="Visit Detils">
-    	                    		<field name="visit_line">
-                    		           <tree string="Visit Lines">
+    	                    		<field name="visit_line"  attrs="{'readonly': [('state', 'not in', ('accepted','in_process'))]}">
+                    		           <tree string="Visit Lines"  delete="false">
                     		             <field name="visible_emp" invisible="1"/>
                     		             <field name="emp_id" attrs="{'invisible': [('visible_emp', '!=', False)]}" />
-                                         <field name="start_time"/>
-                                         <field name="end_time"/>
+                                         <field name="start_time" />
+                                         <field name="end_time" />
                                          <field name="note"/>
                                          <field name="attachment"/>
                                          
@@ -295,26 +293,31 @@
                 <form string="Visit Details">
                  <header>
                  <button name="action_assign" string="Assign Visit" type="object" states="draft" class="btn-primary" readonly="0"/>    
-                 <button name="action_process" string="In Process" type="object" states="assigned" class="btn-primary" readonly="0"/>    
+                 <button name="action_process" string="In Process" type="object" states="accepted" class="btn-primary" readonly="0"/>    
                  <button name="action_done" string="Done" type="object" states="in_progress" class="btn-primary" readonly="0"/>    
+                 <button name="action_accepted" string="Accept" type="object" states="assigned" class="btn-default" readonly="0"/>    
+                 
                  <button name="action_cancel" string="Cancel" type="object" states="draft,assigned" class="btn-default" readonly="0"/>    
                  
-                 <field name="state" widget="statusbar" statusbar_visible="draft,assigned,in_progress,done,cancel"/>
+                 <field name="state" widget="statusbar" statusbar_visible="draft,assigned,accepted,in_progress,done,cancel"/>
                  </header>
                  <sheet>
                         <group name="top">
                        	  <field name="visible_emp" invisible="1"/>
                     	  <field name="emp_id" attrs="{'invisible': [('visible_emp', '!=', False)]}" />		                  
-                    	  <field name="start_time" attrs="{'readonly':[('state','=','done')]}"/>
-		                  <field name="end_time" attrs="{'readonly':[('state','=','done')]}"/>
+                    	  <field name="start_time" readonly="1"/>
+		                  <field name="end_time" readonly="1"/>
 		                  <field name="note" attrs="{'readonly':[('state','=','done')]}"/>
-		                  <field name="attachment" attrs="{'readonly':[('state','=','done')]}"/>
 		                  <field name="product_id"  attrs="{'readonly':[('state','=','done')]}"/>
 		                  <field name="product_unit" attrs="{'readonly':[('state','=','done')]}"/>
 		                  <field name="product_price" attrs="{'readonly':[('state','=','done')]}"/>
-		                  <field name="invoice_flag" attrs="{'readonly':[('state','=','done')]}"/>
-		              
-                  		  
+		                  <field name="postponed_flag" attrs="{'readonly':[('state','=','done')]}"/>
+		                  <field name="postpone_id" attrs="{'readonly':[('state','=','done')]}"/>
+                          <field name="invoice_flag" attrs="{'readonly':[('state','=','done')]}"/>
+                          <field name="attachment" widget="image" attrs="{'readonly':[('state','=','done')]}"/>
+                          <field name="sign" widget="image" attrs="{'readonly':[('state','=','done')]}"/>
+                          
+                    
 			            </group>
                  </sheet>
                 </form>        
