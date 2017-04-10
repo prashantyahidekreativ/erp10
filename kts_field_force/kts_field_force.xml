@@ -1,0 +1,290 @@
+<odoo>
+    
+      <record id="view_kts_field_force_device_tree" model="ir.ui.view">
+            <field name="name">kts.fieldforce.employee.device.tree</field>
+            <field name="model">kts.fieldforce.employee.device</field>   
+            <field name="arch" type="xml">
+                <tree string="Employee Device">
+                  <field name="employee"/>
+                  <field name="device_id"/>
+                  <field name="gprs_state"/>
+                  
+                </tree>        
+            </field>
+        </record>
+     
+      <record id="view_kts_field_force_device_form" model="ir.ui.view">
+            <field name="name">kts.fieldforce.employee.device.form</field>
+            <field name="model">kts.fieldforce.employee.device</field>   
+            <field name="arch" type="xml">
+                <form string="Employee Device">
+                  <header>
+                  
+                      <field name="state" widget="statusbar" statusbar_visible="draft,requested,approved,cancel"/>
+                  </header>
+                  
+                  <sheet>  
+                    <group>
+		                <group>
+		                  <field name="employee"/>
+		                  <field name="name" invisible="1"/>      
+		                </group>
+		                <group>      
+		                  <field name="device_id"/>
+		                  <field name="gprs_state"/>
+                       </group>  
+                    
+                    </group>
+                    <group>
+                       <field name="gprs_note"/>
+                    </group>
+                </sheet>
+                </form>        
+            </field>
+        </record>
+     
+       <record id="action_kts_field_force_device" model="ir.actions.act_window">
+            <field name="name">Employee Device</field>
+            <field name="res_model">kts.fieldforce.employee.device</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+        </record>
+     
+       <record model="ir.ui.view" id="field_force_view_employee_form">
+            <field name="name">kts.fieldforce.employee.form</field>
+            <field name="model">kts.fieldforce.employee</field>
+            <field name="arch" type="xml">
+                <form string="Employee">
+                    <group>
+                        <field name="employee" />
+                        <field name="employee_device" />
+                        <field name="write_date" />
+                        <field name="device_state" />
+                        <field name="last_location" />
+                    </group>
+
+                    <notebook >
+                        <page string="Last Location">
+                        </page>
+                        <page string="Previous Locations">
+                            <field name="previous_locations"  nolabel="1"/>
+                        </page>                            
+                    </notebook>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="field_force_view_employee_tree">
+            <field name="name">kts.fieldforce.employee.tree</field>
+            <field name="model">kts.fieldforce.employee</field>
+            <field name="arch" type="xml">
+                <tree string="Employee">
+                    <field name="employee" />
+                    <field name="employee_device" />
+                    <field name="write_date" />
+                    <field name="last_location" />
+                    <field name="device_state" />
+                </tree>
+            </field>
+        </record>
+
+        <record id="field_force_view_employee_action" model="ir.actions.act_window">
+            <field name="name">Employees</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">kts.fieldforce.employee</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_type">form</field>
+            <field name="view_id" ref="field_force_view_employee_tree"/>
+        </record>
+        
+      
+      <record model="ir.ui.view" id="geo_field_force_view_employee_location_form">
+            <field name="name">kts.fieldforce.employee.location.form</field>
+            <field name="model">kts.fieldforce.employee.location</field>
+            <field name="arch" type="xml">
+                <form string="Employee Location">
+                    <group>
+                        <field name="employee" />
+                        <field name="employee_device" />
+                        <field name="write_date" />
+                        <field name="device_state" />
+                        <field name="last_location" />
+                    </group>
+
+                    <notebook>
+                        <page string="Last Location">
+                            
+                        </page>
+
+                    </notebook>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="geo_field_force_view_employee_location_tree">
+            <field name="name">kts.fieldforce.employee.location.tree</field>
+            <field name="model">kts.fieldforce.employee.location</field>
+            <field name="arch" type="xml">
+                <tree string="Employee Location">
+                    <field name="employee" />
+                    <field name="employee_device" />
+                    <field name="write_date" />
+                    <field name="last_location" />
+                    <field name="device_state" />
+                </tree>
+            </field>
+        </record>
+
+
+        <record id="view_fieldforce_location_filter" model="ir.ui.view">
+            <field name="name">Field Force Lcoation Tracker Search</field>
+            <field name="model">kts.fieldforce.employee.location</field>
+            <field name="arch" type="xml">
+                <search string="Location Tracker Search">
+                    <field name="name" string="Issue" filter_domain="('name','ilike',self)]"/>
+                    <field name="id"/>
+                    <separator/>
+                    <filter string="Today" name="today" domain="[('create_date','&gt;=',current_date),('create_date','&lt;=',current_date)]" /> 
+                    <separator/>
+                    <field name="name"/>
+                    <field name="employee"/>
+                    <field name="employee_device"/>
+                    <field name="last_location"/>
+                    <group expand="0" string="Group By..." >
+                        <filter string="Employee"  domain="[]" context="{'group_by':'employee'}"/>
+                        <filter string="Device"   domain="[]" context="{'group_by':'employee_device'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+
+        <record id="geo_field_force_view_employee_location_action" model="ir.actions.act_window">
+            <field name="name">Employees Location</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">kts.fieldforce.employee.location</field>
+            <field name="view_mode">tree,form,geoengine</field>
+            <field name="view_type">form</field>
+            <field name="search_view_id" ref="view_fieldforce_location_filter" />
+            <field name="view_id" ref="geo_field_force_view_employee_location_tree"/>
+        </record>
+
+       
+        <record model="ir.ui.view" id="kts_employee_tracking_shift_form">
+            <field name="name">kts.fieldforce.employee.tracking.shift.form</field>
+            <field name="model">kts.fieldforce.employee.tracking.shift</field>
+            <field name="arch" type="xml">
+                <form string="Configure Work Shift">
+                    <group>
+                        <field name="name" />
+                        <label for="time_start" />
+                        <div >
+                            <field name="time_start" widget="float_time" class="oe_inline"/>
+                            <label string="Hrs"  class="oe_inline" />
+                        </div>
+                        <label for="time_stop" />
+                        <div >
+                            <field name="time_stop"  widget="float_time"  class="oe_inline"/>
+                            <label string="Hrs"  class="oe_inline" />
+                        </div>
+                        <field name="tracking_frq_office" />
+                        <field name="tracking_frq_non_office" />
+                        <field name="task_dist_range" />
+                        <field name="track_shift_office" />
+                        <field name="track_shift_non_office" />
+                        <field name="stop_tracking" />
+                        <field name="current_date" />
+                    </group>
+                    <separator string="Shift Employees"  />
+                    <group >
+                        <field name="shift_line" nolabel="1">
+                            <tree string=""  editable="bottom">
+                                <field name="employee" />
+                                <field name="device_id"/>
+                                <field name="device_state"/>
+                                <field name="job_id" />
+                                <field name="parent_id" />   
+                                <field name="mobile_phone"/>
+                                <field name="work_email"/>
+                            </tree>                         
+                        </field>
+                    </group>
+
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="kts_employee_tracking_shift_tree">
+            <field name="name">kts.fieldforce.employee.tracking.shift.tree</field>
+            <field name="model">kts.fieldforce.employee.tracking.shift</field>
+            <field name="arch" type="xml">
+                <tree string="Work Shift Configuration">
+                    <field name="name" />
+                    <field name="time_start"  widget="float_time" />
+                    <field name="time_stop"  widget="float_time" />
+                    <field name="tracking_frq_office" />
+                    <field name="tracking_frq_non_office" />
+                    <field name="stop_tracking" />
+                </tree>
+            </field>
+        </record>
+
+        <record id="kts_employee_tracking_shift_action" model="ir.actions.act_window">
+            <field name="name">Working Shift</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">kts.fieldforce.employee.tracking.shift</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_type">form</field>
+            <field name="view_id" ref="kts_employee_tracking_shift_tree"/>
+        </record>
+
+
+        
+      
+      
+    
+    <menuitem
+            id="base.kts_field_force_root"
+            name="Field Force" 
+            sequence="22"/>
+       
+       
+       <menuitem
+            id="menu_kts_field_force"
+            name="Field Force"
+            parent="base.kts_field_force_root"    
+            sequence="1"/>
+             
+       <menuitem
+            id="menu_kts_field_force_configuration"
+            name="Configuration" 
+            parent="base.kts_field_force_root"
+            sequence="2"/>
+         
+       <menuitem
+            id="menu_action_kts_field_force_employee"
+            name="Employee Tracker"
+            action="field_force_view_employee_action"
+            parent="menu_kts_field_force"    
+            sequence="1"/>                             
+       
+         
+        
+        <menuitem
+            id="menu_action_kts_field_force_device"
+            name="Employee Device"
+            action="action_kts_field_force_device"
+            parent="menu_kts_field_force_configuration"    
+            sequence="1"/>                             
+        
+        <menuitem
+            id="menu_action_kts_employee_tracking_shift"
+            name="Working Shift"
+            action="kts_employee_tracking_shift_action"
+            parent="menu_kts_field_force_configuration"    
+            sequence="2"/>                             
+                  
+         
+
+
+</odoo>
