@@ -27,6 +27,7 @@
                     <group>
 		                <group>
 		                  <field name="employee"/>
+		                  <field name="user_id"/>
 		                  <field name="name" invisible="1"/>      
 		                </group>
 		                <group>      
@@ -199,7 +200,11 @@
                     <group >
                         <field name="shift_line" nolabel="1">
                             <tree string=""  editable="bottom">
+                                
                                 <field name="employee" />
+                                <field name="current_track_frq"/>
+                                <field name="current_state"/>
+                                
                                 <field name="device_id"/>
                                 <field name="device_state"/>
                                 <field name="job_id" />
