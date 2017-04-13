@@ -77,30 +77,22 @@ class kts_fieldforce_employee_device(models.Model):
     gprs_note = fields.Char('GPS Note', readonly=True)
     gprs_state = fields.Boolean('GPS State', readonly=True)      
     state = fields.Selection([('draft','Draft'),('requested','Requested'),('approved','Approved'),('cancel','Cancel')],string='State',default='draft')
-    active = fields.Boolean('IsActive', defualt=True)                 
+    active = fields.Boolean('IsActive', default=True)                 
     user_id = fields.Many2one(related='employee.user_id',string='User', store=True)        
     _sql_constraints = [
         ('name_uniq', 'unique (name)','Device with this name already exists!'),
         ('device_id_uniq', 'unique (device_id)','Device with this device id already exists!'),
         ]     
     
-    @api.model             
-    def create(self,vals):
-        employee=vals.get('employee',False)
-        if employee==False:
-            employee=self.env['hr.employee'].search([('user_id','=',self._uid)])
-            employee=employee[0]
-            
-        device=self.search([('employee','=',employee)])
-        vals.update({'employee':employee})
-        
-        if len (device)>0:
-            device=self.browse(device[0])
-            employee=self.env['hr.employee'].browse(employee)
-            raise UserError (_("Device \"%s\" is already assigned to \"%s\"!") % (device.device_id,employee.name))
+    @api.multi
+    def create_device(self, user_id, device_id):
+        self.ensure_one()
+        emp_id = self.env['hr.employee'].search([('user_id','=',user_id)])       
+        self.create({'employee':emp_id.id,'device_id':device_id,'user_id':user_id})
+        return True        
 
-        return super(kts_fieldforce_employee_device, self).create(vals)
-        
+
+
 class kts_fieldforce_employee_tracking_shift(models.Model):
     _name = 'kts.fieldforce.employee.tracking.shift'
     _rec_name = 'name'
