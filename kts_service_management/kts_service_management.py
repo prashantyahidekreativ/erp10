@@ -5,6 +5,7 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import random
 import re
+
 class kts_disciplinary_details(models.Model):
     _name='kts.disciplinary.details'
     log_date=fields.Date(string='Date', copy=False,)
@@ -54,25 +55,25 @@ class kts_visit_details(models.Model):
     start_time=fields.Datetime(string='Start Date', copy=False,)
     end_time=fields.Datetime(string='End Date',  copy=False,)
     note = fields.Char('Note')
-    attachment=fields.Binary("Image", attachment=True, help="This field holds the attachment.")
+    attachment=fields.Binary("Site Image", attachment=True, help="This field holds the attachment.")
     product_id=fields.Many2one('product.product', domain=[('type', '=', 'service')], string='Product', required=True, change_default=True, index=True, track_visibility='always')
     product_unit=fields.Many2one('product.uom', string='Unit', required=True,)
     product_price=fields.Float('Price')
     visible_emp = fields.Selection(related='service_management_id.service',)
     invoice_flag=fields.Boolean(string='Invoice',default=False )
-    state=fields.Selection([('draft','Draft'),('assigned','Assigned'),('accepted','Accept'),('in_progress','In Progress'),('done','Done'),('cancel','Cancel')],string='State',default='draft')
-    postponed_flag = fields.Boolean('Postponed Flag',default=False)
+    state=fields.Selection([('draft','Draft'),('assigned','Assigned'),('accepted','Accept'),('in_progress','In Progress'),('postpone','Postponed'),('done','Done'),('cancel','Cancel')],string='State',default='draft')
     postpone_id = fields.Many2one('kts.postpone.reason',string='Postpone Reason')
     sign = fields.Binary('Signature', attachment=True)
+    sign_name = fields.Char('Signature Name')
     
     @api.model
     def create(self, vals):
         if vals.get('service_management_id'):
             service_id = vals.get('service_management_id')
             service_obj = self.env['kts.service.management'].browse([service_id])
-            visit_lines = service_obj.visit_line.filtered(lambda r: r.state not in ('done','cancel'))
+            visit_lines = service_obj.visit_line.filtered(lambda r: r.state not in ('done','cancel','postpone'))
             if visit_lines:
-                raise UserError(_('Check All visit lines are done/cancel to create new visit'))
+                raise UserError(_('Check All visit lines are done/postpone/cancel to create new visit'))
             else:
                 vals.update({'state':'assigned'})
         return super(kts_visit_details, self).create(vals)
@@ -132,20 +133,25 @@ class kts_visit_details(models.Model):
         self.write({'state':'assigned'})    
     
     @api.multi
+    def action_accepted(self):
+        self.write({'state':'accepted'})    
+    
+    @api.multi
     def action_process(self):
         self.write({'state':'in_progress','start_time':fields.Datetime.now()})    
-    
+        return True
+    @api.multi
+    def action_postpone(self):
+        self.write({'state':'postpone','end_time':fields.Datetime.now()})    
+        return True 
     @api.multi
     def action_done(self):
         self.write({'state':'done','end_time':fields.Datetime.now()})    
-    
+        return True
     @api.multi
     def action_cancel(self):
         self.write({'state':'cancel'})    
     
-    @api.multi
-    def action_accepted(self):
-        self.write({'state':'accepted'})    
     
    
 class kts_nature_of_complaints(models.Model):
@@ -306,11 +312,7 @@ class kts_contract_customer_inv(models.Model):
                 service_obj.create(res1) 
         return ret     
     
-    
-    
-    
-    
-     
+   
 class kts_service_management(models.Model):
     _name='kts.service.management'
     _order = 'id desc'
@@ -358,6 +360,8 @@ class kts_service_management(models.Model):
     invoice_lines=fields.One2many('account.invoice','service_id',string='Invoice Lines',readonly=True)
     end_customer_name=fields.Char('End Customer Name')
     end_customer_mob=fields.Char('End Customer Moblie No')
+    problem_detail = fields.Text('Problem Details')
+    problem_solution = fields.Text('Problem Solution')
       
     @api.onchange('end_customer_mob')
     def onchange_end_customer_mob(self):
@@ -553,7 +557,8 @@ class kts_service_management(models.Model):
     def action_log_problem(self):
         self.write({'state': 'new',
                     'problem_logged':True,
-                    'date_logged':fields.Datetime.now()
+                    'date_logged':fields.Datetime.now(),
+                    'logged_by':self._uid
                     })
         return True 
 
@@ -583,8 +588,8 @@ class kts_service_management(models.Model):
         self.ensure_one()
         if self.visit_line:
             for line in self.visit_line:
-                if line.state not in ('done','cancel'):
-                    raise UserError(_('Visit lines are not in done/cancel state'))
+                if line.state not in ('done','cancel','postpone'):
+                    raise UserError(_('Visit lines are not in Done/Postponed/Cancel state'))
         
         if self.picking_lines:
             for line in self.picking_lines:
@@ -618,13 +623,13 @@ class kts_service_management(models.Model):
         self.ensure_one()
         if self.visit_line:
             for line in self.visit_line:
-                if line.state not in ('done','cancel'):
-                    raise UserError(_('Visit lines are not in done/cancel state'))
+                if line.state not in ('done','cancel','postpone'):
+                    raise UserError(_('Visit lines are not in Done/Postpone/Cancel state'))
         
         if self.picking_lines:
             for line in self.picking_lines:
                 if line.state not in ('done','cancel'):
-                    raise UserError(_('Picking lines are not in done/cancel state'))
+                    raise UserError(_('Picking lines are not in Done/Cancel state'))
 
         self.write({'state': 'cancel'})
         return {}

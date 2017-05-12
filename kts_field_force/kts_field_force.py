@@ -29,6 +29,16 @@ class kts_fieldforce_employee(models.Model):
     device_state = fields.Boolean(related='employee_device.gprs_state',string='GPS Sate', readonly=True, store=True)
     
     @api.multi
+    def write(self,vals):
+        if vals.get('location_latitude'):
+            lat = vals.get('location_latitude')
+        if vals.get('location_longitude'):
+            lon=vals.get('location_longitude')
+        loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon})        
+        return super(kts_fieldforce_employee, self).write(vals)    
+        
+    
+    @api.multi
     def _get_leave_status(self):
         self.ensure_one()
         if self.employee:
@@ -84,9 +94,9 @@ class kts_fieldforce_employee_device(models.Model):
         ('device_id_uniq', 'unique (device_id)','Device with this device id already exists!'),
         ]     
     
-    @api.multi
+    @api.model
     def create_device(self, user_id, device_id):
-        self.ensure_one()
+        user_id = int(user_id)
         emp_id = self.env['hr.employee'].search([('user_id','=',user_id)])       
         self.create({'employee':emp_id.id,'device_id':device_id,'user_id':user_id})
         return True        
@@ -132,7 +142,7 @@ class kts_fieldforce_employee_tracking_shift_line(models.Model):
     current_state= fields.Char(compute='_get_current_state', string='Tracking Shift')
     field_shift_employee_rel= fields.Many2one('kts.fieldforce.employee.tracking.shift', 'Shift Employees')
     
-    
+    @api.model
     def get_tracking_frequency(self,employee_id):
         employee=employee_id
         if employee==None:
