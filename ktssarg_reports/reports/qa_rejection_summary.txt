@@ -1,0 +1,47 @@
+select 
+COALESCE(aaa.spg_total_qty,'0') as spg_total_qty,
+COALESCE(aaa.spg_rej_qty,'0') as spg_rej_qty,
+COALESCE(aaa.spg_rework,'0') as spg_rework,
+COALESCE(bbb.srg_total_qty,'0') as srg_total_qty,
+COALESCE(bbb.srg_rej_qty,'0') as srg_rej_qty,
+COALESCE(bbb.srg_rework,'0') as srg_rework,
+COALESCE(ccc.brg_total_qty,'0') as brg_total_qty,
+COALESCE(ccc.brg_rej_qty,'0') as brg_rej_qty,
+COALESCE(ccc.brg_rework,'0') as brg_rework 
+from 
+(select aa.total_qty as spg_total_qty,bb.rej_qty as spg_rej_qty,cc.rework as spg_rework from 
+(select count(*) as total_qty from product_measured_product_dimensions a, product_category b 
+where a.create_uid=b.create_uid and calibration_date between %s and %s and b.sales_type='spg'
+) aa,
+(select count(*) as rej_qty from product_measured_product_dimensions a, product_category b 
+where a.create_uid=b.create_uid and a.result='rejected' and a.calibration_date between %s and %s and b.sales_type='spg'
+) bb,
+(select count(*) as rework from product_measured_product_dimensions a, product_category b
+where a.create_uid=b.create_uid and a.result='rework' and a.calibration_date between %s and %s and b.sales_type='spg'
+) cc
+) aaa,
+
+(select aa.total_qty as srg_total_qty,bb.rej_qty as srg_rej_qty,cc.rework as srg_rework from 
+(select count(*) as total_qty from product_measured_product_dimensions a, product_category b 
+where a.create_uid=b.create_uid and a.calibration_date between %s and %s and b.sales_type='srg'
+) aa,
+(select count(*) as rej_qty from product_measured_product_dimensions a, product_category b 
+where a.create_uid=b.create_uid and a.result='rejected' and a.calibration_date between %s and %s and b.sales_type='srg'
+) bb,
+(select count(*) as rework from product_measured_product_dimensions a, product_category b
+where a.create_uid=b.create_uid and a.result='rework' and a.calibration_date between %s and %s and b.sales_type='srg'
+) cc
+) bbb,
+
+(select aa.total_qty as brg_total_qty,bb.rej_qty as brg_rej_qty,cc.rework as brg_rework from 
+(select count(*) as total_qty from product_measured_product_dimensions a, product_category b 
+where a.create_uid=b.create_uid and a.calibration_date between %s and %s and b.sales_type='brg'
+) aa,
+(select count(*) as rej_qty from product_measured_product_dimensions a, product_category b 
+where a.create_uid=b.create_uid and a.result='rejected' and a.calibration_date between %s and %s and b.sales_type='brg'
+) bb,
+(select count(*) as rework from product_measured_product_dimensions a, product_category b
+where a.create_uid=b.create_uid and a.result='rework' and a.calibration_date between %s and %s and b.sales_type='brg'
+) cc
+) ccc
+;

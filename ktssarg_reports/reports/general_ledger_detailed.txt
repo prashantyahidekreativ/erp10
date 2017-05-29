@@ -1,0 +1,19 @@
+select aaa.name,aaa.account_id, COALESCE(aaa.credit_open,'0') as credit_open, COALESCE(aaa.debit_open,'0') debit_open, COALESCE(aaa.credit_close,'0') as credit_close, COALESCE(aaa.debit_close,'0') as debit_close, aaa.journal_type, aaa.move_id, aaa.transaction_date, COALESCE(aaa.report_option,'') as report_option, COALESCE(aaa.account_type,'') as   account_type
+from
+(select aa.name,aa.account_id, COALESCE(bb.credit_open,'0') as credit_open, COALESCE(bb.debit_open,'0') debit_open, COALESCE(cc.credit_close,'0') as credit_close, COALESCE(cc.debit_close,'0') as debit_close, dd.journal_type, dd.move_id, dd.transaction_date, COALESCE(aa.report_option,'') as report_option, COALESCE(aa.account_type,'') as   account_type from
+
+(select code||' '|| name as name, id as account_id, report_option, type account_type from account_account where report_option in ('summary','detailed','control_child') and active='t') aa
+left outer join
+(select sum(credit) as credit_open, sum(debit) debit_open, account_id from account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and a.date < %s group by account_id) bb
+on aa.account_id=bb.account_id
+left outer join
+(select sum(credit) as credit_close, sum(debit) debit_close, account_id from account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and a.date <= %s group by account_id) cc
+on aa.account_id=cc.account_id
+left outer join
+(select b.id as move_id,b.date as transaction_date, account_id, c.type as journal_type from account_move_line a, account_move b, account_journal c 
+where a.move_id=b.id and b.state='posted' and 
+a.date >= %s and 
+a.date <= %s and 
+b.journal_id=c.id 
+group by b.id,account_id, b.date, c.type) dd
+on aa.account_id=dd.account_id ) aaa

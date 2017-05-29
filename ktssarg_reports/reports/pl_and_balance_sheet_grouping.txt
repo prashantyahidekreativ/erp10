@@ -1,0 +1,19 @@
+select COALESCE(ccc.name,'-') as name,COALESCE(eee.account_name,'-') as account_name, ccc.note,   sum(COALESCE(eee.balance,'0')) as balance
+from
+kts_account_plbc_level1 aaa
+inner join kts_account_plbc_level2 bbb on aaa.id=bbb.plbc_level1
+inner join kts_account_plbc_level3 ccc on bbb.id=ccc.plbc_level2
+left join kts_account_plbc ddd on ddd.account_line=ccc.id
+left join
+(select 
+aa.id as account_id, aa.name as account_name, sum(cc.balance) as balance
+from
+account_account aa, 
+account_account bb,(select sum(a.credit) - sum(a.debit) as balance, a.account_id from account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and a.date <=%s group by a.account_id ) cc
+where
+bb.parent_left between aa.parent_left and aa.parent_right 
+and bb.parent_right between aa.parent_left and aa.parent_right 
+and bb.id=cc.account_id
+group by aa.id, aa.name) eee on ddd.account_id=eee.account_id
+group by ccc.name, ccc.note, eee.account_name
+order by ccc.note

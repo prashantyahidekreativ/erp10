@@ -1,0 +1,114 @@
+select
+COALESCE(aa.supplier_name,'') as supplier_name, 
+COALESCE(aa.supplier_code,'') as supplier_code, 
+COALESCE(aa.po_number,'') as po_number,
+COALESCE(to_char(aa.po_date,'DD/MM/YYYY'),'') as po_date,
+COALESCE(to_char(aa.bill_date,'DD/MM/YYYY'),'') as bill_date,
+COALESCE(aa.payment_term,'') as payment_term,
+COALESCE(aa.bill_number,'') as bill_number, 
+COALESCE(aa.bill_amount,'0') as bill_amount, 
+COALESCE(to_char(aa.date_due,'DD/MM/YYYY'),'') as date_due,
+COALESCE(aa.TDS,'0') as TDS,
+COALESCE(aa.payment_reference,'') as payment_reference,
+COALESCE(aa.paid_amount,'0')  as paid_amount,
+COALESCE(aa.deduction_reference,'') as Deduction_reference,
+COALESCE(aa.deduction_amount,'0')  as deduction_amount,
+COALESCE(aa.balance_amount,'0') as balance_amount, 
+COALESCE(aa.overdue_amount,'0') as overdue_amount, 
+COALESCE(aa.invoice_no_by_user,'0') as invoice_no_by_user,
+COALESCE(bb.bill_amount_partner,'0')  as bill_amount_partner,
+COALESCE(bb.TDS_partner,'0')  as TDS_partner,
+COALESCE(bb.paid_amount_partner,'0')  as paid_amount_partner,
+COALESCE(bb.deduction_amount_partner,'0')  as deduction_amount_partner,
+COALESCE(bb.balance_amount_partner,'0')  as balance_amount_partner,
+COALESCE(bb.overdue_amount_partner,'0')  as overdue_amount_partner,
+COALESCE(bb.overdue_amount_partner,'0')  as overdue_amount_partner,
+COALESCE(aa.origin,'')  as origin
+from
+(select 
+COALESCE(a1.customer_name,'') as supplier_name, 
+COALESCE(a1.customer_code,'') as supplier_code, 
+COALESCE(a1.po_number,'') as po_number,
+a1.po_date,
+a1.date_invoice as bill_date, 
+COALESCE(g1.payment_term,'') as payment_term,
+COALESCE(a1.number,'') as bill_number, 
+COALESCE(a1.amount_total,'0') as bill_amount, 
+a1.date_due, 
+COALESCE(f1.refund_credit,'0') as TDS,
+COALESCE(d1.refund_detail,'') || COALESCE(e1.refund_detail,'') as payment_reference,
+COALESCE(d1.refund_debit,'0') + COALESCE(e1.refund_debit,'0')  as paid_amount,
+COALESCE(b1.refund_detail,'') || COALESCE(c1.refund_detail,'') as Deduction_reference,
+COALESCE(b1.refund_debit,'0') + COALESCE(c1.refund_debit,'0')  as deduction_amount,
+COALESCE(a1.residual,'0') as balance_amount, 
+case when a1.days_old <= -1 then a1.residual else 0 end as overdue_amount,
+a1.invoice_no_by_user,
+a1.partner_id,
+h1.origin
+from
+(select b.id, a.name as customer_name, a.customer_code customer_code, b.date_invoice, b.number, b.amount_total, b.residual,  b.date_due, b.courier_ref_no, b.move_id, b.account_id, d.reconcile_id, d.reconcile_partial_id, b.po_date, b.po_number, b.date_due - current_date as days_old,b.invoice_no_by_user, b.partner_id, b.payment_term from res_partner a, account_invoice b, (select max(reconcile_id) as reconcile_id, max(reconcile_partial_id) as reconcile_partial_id, move_id, account_id from account_move_line group by move_id, account_id) as d  where b.type= 'in_invoice' and b.partner_id=a.id and b.move_id=d.move_id and b.account_id=d.account_id and b.state='open' ) as a1
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail,
+a.reconcile_id from account_move_line a,  account_journal b, account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type ='purchase_refund' and a.move_id=c.id group by a.reconcile_id) as b1
+on a1.reconcile_id=b1.reconcile_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_partial_id from account_move_line a,  account_journal b , account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type ='purchase_refund' and a.move_id=c.id group by a.reconcile_partial_id) as c1
+on a1.reconcile_partial_id=c1.reconcile_partial_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.journal_id, a.reconcile_id from account_move_line a,  account_journal b , account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type not in ('purchase','purchase_refund') and a.move_id=c.id group by a.journal_id, a.reconcile_id) as d1
+on a1.reconcile_id=d1.reconcile_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_partial_id from account_move_line a,  account_journal b, account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type not in ('purchase','purchase_refund') and a.move_id=c.id group by a.reconcile_partial_id) as e1
+on a1.reconcile_partial_id=e1.reconcile_partial_id
+
+left join
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.move_id from account_move_line a,  account_move c, account_account b where a.move_id=c.id  and a.account_id= b.id and b.id in (select tds_account from account_ktstds) group by a.move_id) as f1
+on a1.move_id=f1.move_id 
+
+left join
+(select a.invoice_id, COALESCE(replace(array_to_string(array_agg(b.name),','),' ',''),'') as origin from purchase_invoice_rel a, purchase_order b where a.purchase_id=b.id group by a.invoice_id) h1
+on a1.id=h1.invoice_id
+
+left join
+(select name as payment_term, id from account_payment_term) g1
+ on a1.payment_term=g1.id) as aa,
+
+(select 
+sum(COALESCE(a1.amount_total,'0')) as bill_amount_partner, 
+sum(COALESCE(f1.refund_credit,'0')) as TDS_partner,
+sum(COALESCE(d1.refund_debit,'0') + COALESCE(e1.refund_debit,'0'))  as paid_amount_partner,
+sum(COALESCE(b1.refund_debit,'0') + COALESCE(c1.refund_debit,'0'))  as deduction_amount_partner,
+sum(COALESCE(a1.residual,'0')) as balance_amount_partner, 
+sum(case when a1.days_old <= -1 then a1.residual else 0 end) as overdue_amount_partner,
+a1.partner_id
+from
+(select a.name as customer_name, a.customer_code customer_code, b.date_invoice, b.number, b.amount_total, b.residual,  b.date_due, b.courier_ref_no, b.move_id, b.account_id, d.reconcile_id, d.reconcile_partial_id, b.po_date, b.po_number, b.date_due - current_date as days_old,b.invoice_no_by_user, b.partner_id from res_partner a, account_invoice b,  (select max(reconcile_id) as reconcile_id, max(reconcile_partial_id) as reconcile_partial_id, move_id, account_id from account_move_line group by move_id, account_id) as d  where b.type= 'in_invoice' and b.partner_id=a.id and b.move_id=d.move_id and b.account_id=d.account_id and b.state='open' ) as a1
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail,
+a.reconcile_id from account_move_line a,  account_journal b, account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type ='purchase_refund' and a.move_id=c.id group by a.reconcile_id) as b1
+on a1.reconcile_id=b1.reconcile_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_partial_id from account_move_line a,  account_journal b , account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type ='purchase_refund' and a.move_id=c.id group by a.reconcile_partial_id) as c1
+on a1.reconcile_partial_id=c1.reconcile_partial_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_id from account_move_line a,  account_journal b , account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type not in ('purchase','purchase_refund') and a.move_id=c.id group by a.reconcile_id) as d1
+on a1.reconcile_id=d1.reconcile_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_partial_id from account_move_line a,  account_journal b, account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type not in ('purchase','purchase_refund') and a.move_id=c.id group by a.reconcile_partial_id) as e1
+on a1.reconcile_partial_id=e1.reconcile_partial_id
+
+left join
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.move_id from account_move_line a,  account_move c, account_account b where a.move_id=c.id  and a.account_id= b.id and b.id in (select tds_account from account_ktstds) group by a.move_id) as f1
+on a1.move_id=f1.move_id 
+group by a1.partner_id) as bb
+where aa.partner_id=bb.partner_id
+and aa.partner_id=%s
+Order by aa.supplier_name,aa.bill_date

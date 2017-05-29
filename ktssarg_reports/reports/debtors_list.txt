@@ -1,0 +1,393 @@
+select
+COALESCE(aabb.customer_name,'') as customer_name, 
+COALESCE(aabb.customer_code,'') as customer_code, 
+COALESCE(aabb.po_number,'') as po_number,
+COALESCE(aabb.po_date,'') as po_date,
+COALESCE(aabb.date_invoice,'2000-01-01') as date_invoice,
+COALESCE(aabb.number,'') as number, 
+COALESCE(aabb.total_amount,'0') as total_amount, 
+COALESCE(aabb.date_due,'') as date_due,
+COALESCE(aabb.payment_reference,'') as payment_reference,
+COALESCE(aabb.payment_amount,'0') as payment_amount,
+COALESCE(aabb.credit_note_reference,'') as credit_note_reference,
+COALESCE(aabb.credit_note_amount,'0') as credit_note_amount,
+COALESCE(aabb.residual_amount,'0') as residual_amount, 
+COALESCE(aabb.payment_term,'') as payment_term,
+COALESCE(aabb.Overdue_type,'') as overdue_type,
+COALESCE(aabb.courier_ref_no,'') as courier_ref_no,
+COALESCE(aabb.amount_partner_total,'0') as amount_partner_total, 
+COALESCE(aabb.payment_partner_amount,'0') as payment_partner_amount, 
+COALESCE(aabb.credit_note_partner_amount,'0') as credit_note_partner_amount, 
+COALESCE(aabb.residual_partner_amount,'0') as residual_partner_amount,
+COALESCE(aabb.currency,'') as currency,
+COALESCE(aabb.contact_name,'') as contact_name, 
+COALESCE(aabb.street,'') as street, 
+COALESCE(aabb.street2,'') as street2,
+COALESCE(aabb.city,'') as city,
+COALESCE(aabb.state,'') as state,
+COALESCE(aabb.country,'') as country,
+COALESCE(aabb.ledger_debit) as ledger_debit,
+COALESCE(aabb.ledger_credit) as ledger_credit,
+COALESCE(aabb.marketing_zone,'Market Zone-NA') as marketing_zone,
+COALESCE(aabb.marketing_zone_id,'0') as marketing_zone_id,
+COALESCE(aabb.zip,'') as zip,
+COALESCE(aabb.payment_id,'') as payment_id,
+COALESCE(aabb.payment_amount_inr,'0') as payment_amount_inr,
+COALESCE(aabb.credit_note_amount_inr,'0') as credit_note_amount_inr,
+COALESCE(aabb.invoice_amount_inr,'0') as invoice_amount_inr,
+COALESCE(aabb.residual_inr,'0') as residual_inr,
+Case when COALESCE(aabb.residual_inr,'0') < 0 then '' else COALESCE(aabb.invoice_flag,'') end as invoice_flag
+
+from (
+select 
+COALESCE(aa.customer_name,'') as customer_name, 
+COALESCE(aa.customer_code,'') as customer_code, 
+COALESCE(aa.po_number,'') as po_number,
+COALESCE(to_char(aa.po_date,'DD/MM/YYYY'),'') as po_date,
+aa.date_invoice as date_invoice,
+COALESCE(replace(aa.number,' ',''),'') as number, 
+COALESCE(aa.total_amount,'0') as total_amount, 
+COALESCE(to_char(aa.date_due,'DD/MM/YYYY'),'') as date_due,
+COALESCE(aa.payment_reference,'') as payment_reference,
+COALESCE(case when aa.currency='INR' then COALESCE(aa.payment_amount,'0') - COALESCE(aa.payment_amount_debit,'0') else -1* COALESCE(aa.payment_currency,'0') end,'0') as payment_amount,
+COALESCE(aa.credit_note_reference,'') as credit_note_reference,
+COALESCE(case when aa.currency='INR' then COALESCE(aa.credit_note_amount,'0') - COALESCE(aa.credit_note_amount_debit,'0') else -1* COALESCE(aa.credit_note_currency,'0') end,'0') as credit_note_amount,
+COALESCE(aa.residual_amount,'0') as residual_amount, 
+COALESCE(aa.payment_term,'') as payment_term,
+COALESCE(aa.Overdue_type,'') as overdue_type,
+COALESCE(aa.courier_ref_no,'') as courier_ref_no,
+COALESCE(bb.amount_partner_total,'0') as amount_partner_total, 
+COALESCE(case when bb.currency='INR' then COALESCE(bb.payment_partner_amount,'0') - COALESCE(bb.payment_partner_amount_debit,'0') else -1 * COALESCE(bb.payment_partner_currency,'0') end,'0') as payment_partner_amount, 
+COALESCE(case when bb.currency='INR' then COALESCE(bb.credit_note_partner_amount,'0') - COALESCE(bb.credit_note_partner_amount_debit,'0') else -1 * COALESCE(bb.credit_note_partner_currency,'0') end,'0') as credit_note_partner_amount, 
+COALESCE(bb.residual_partner_amount,'0') as residual_partner_amount,
+COALESCE(aa.currency,'') as currency,
+COALESCE(aa.contact_name,'') as contact_name, 
+COALESCE(aa.street,'') as street, 
+COALESCE(aa.street2,'') as street2,
+COALESCE(aa.city,'') as city,
+COALESCE(aa.state,'') as state,
+COALESCE(aa.country,'') as country,
+COALESCE(aa.ledger_debit,'0') as ledger_debit,
+COALESCE(aa.ledger_credit,'0') as ledger_credit,
+COALESCE(aa.marketing_zone,'Market Zone-NA') as marketing_zone,
+COALESCE(aa.marketing_zone_id,'0') as marketing_zone_id,
+COALESCE(aa.zip,'') as zip,
+COALESCE(aa.partner_id,'0') as partner_id,
+COALESCE(aa.payment_id,'0') as payment_id,
+COALESCE(aa.payment_amount,'0') - COALESCE(aa.payment_amount_debit,'0') payment_amount_inr,
+COALESCE(aa.credit_note_amount,'0') - COALESCE(aa.credit_note_amount_debit,'0') as credit_note_amount_inr,
+COALESCE(aa.invoice_amount_inr,'0') as invoice_amount_inr,
+COALESCE(aa.invoice_flag,'') as invoice_flag,
+COALESCE(aa.residual_inr,'1') as residual_inr
+
+from
+(select 
+COALESCE(a1.customer_name,'') as customer_name, 
+COALESCE(a1.customer_code,'') as customer_code, 
+COALESCE(f1.customer_po_no,'') as po_number,
+a1.po_date,
+a1.date_invoice, 
+COALESCE(a1.number,'') as number, 
+COALESCE(a1.total_amount,'0') as total_amount, 
+a1.date_due, 
+COALESCE(a1.debit) as invoice_debit,
+COALESCE(a1.credit) as invoice_credit,
+COALESCE(d1.refund_detail,'') || COALESCE(e1.refund_detail,'') as payment_reference,
+COALESCE(d1.refund_credit,'0') + COALESCE(e1.refund_credit,'0')  as payment_amount,
+COALESCE(d1.refund_debit,'0') + COALESCE(e1.refund_debit,'0')  as payment_amount_debit,
+COALESCE(d1.amount_currency,'0') + COALESCE(e1.amount_currency,'0')  as payment_currency,
+COALESCE(b1.refund_detail,'') || COALESCE(c1.refund_detail,'') as credit_note_reference,
+COALESCE(b1.refund_credit,'0') + COALESCE(c1.refund_credit,'0')  as credit_note_amount,
+COALESCE(b1.refund_debit,'0') + COALESCE(c1.refund_debit,'0')  as credit_note_amount_debit,
+COALESCE(b1.amount_currency,'0') + COALESCE(c1.amount_currency,'0')  as credit_note_currency,
+COALESCE(a1.residual,'0') as residual_amount, 
+COALESCE(a2.payment_term,'') as payment_term,
+Case when a1.days_old < -240 then 'Above 240 days' when a1.days_old < -180 then '181-240 Days' when a1.days_old < -121 then '121-180 Days' when  a1.days_old < -91 then '91-120 Days' when a1.days_old < -45 then '45-90 Days' when a1.days_old <= -1 then 'Below 45 days' else 'Below 45 days' end as Overdue_type,
+COALESCE(a1.courier_ref_no,'') as courier_ref_no,
+a1.partner_id,
+a1.currency,
+a3.name as contact_name, a3.street, a3.street2,a3.city,a3.state,a3.country,
+g1.debit as ledger_debit,
+g1.credit as ledger_credit,
+COALESCE(h1.marketing_zone_id,'0') as marketing_zone_id,
+COALESCE(h1.marketing_zone,'Market Zone-NA') as marketing_zone,
+COALESCE(a3.zip,'') as zip,
+COALESCE(d1.payment_id,'') || COALESCE(e1.payment_id,'') || COALESCE(b1.payment_id,'') || COALESCE(c1.payment_id,'') as payment_id,
+COALESCE(a1.invoice_amount_INR,'0') as invoice_amount_inr,
+COALESCE(a1.invoice_flag,'') as invoice_flag,
+COALESCE(a1.residual_inr,'0') as residual_inr
+from
+(
+select 
+a.name as customer_name,  
+a.customer_code customer_code, 
+b.date_invoice, 
+case when COALESCE(invoice_no_by_user,'0')='0' then b.number else to_char(invoice_no_by_user,'99999') end as number, b.total_amount, 
+case when total_amount < 0 then -1* b.residual else b.residual end as residual, 
+b.payment_term, 
+b.date_due, 
+b.courier_ref_no, 
+b.move_id, 
+b.account_id, d.reconcile_id, 
+d.reconcile_partial_id, 
+b.po_date, 
+b.po_number, 
+b.date_due - current_date as days_old, 
+b.partner_id, 
+b.id, e.name as currency, 
+b.address_contact_id, 
+d.credit, 
+d.debit,
+COALESCE(b.exchange_rate,'1') * b.total_amount as invoice_amount_inr,
+'1'  as Invoice_flag,
+case when total_amount < 0 then -1* b.residual * COALESCE(b.exchange_rate,'1') else b.residual*COALESCE(b.exchange_rate,'1') end as residual_inr
+from res_partner a, account_invoice b, (select sum(credit) as credit, sum(debit) as debit, max(reconcile_id) as reconcile_id, max(reconcile_partial_id) as reconcile_partial_id, account_id, move_id from account_move_line group by account_id, move_id) as d, res_currency e  where b.type= 'out_invoice' and b.partner_id=a.id and b.move_id=d.move_id and b.account_id=d.account_id and b.state='open' and b.currency_id=e.id 
+Union
+select 
+aa.customer_name, 
+aa.customer_code, 
+aa.date_invoice , 
+aa.number,
+aa.total_amount, 
+case when COALESCE(cc.currency,'INR')='INR' then  aa.debit-aa.credit else aa.amount_currency end as residual, 
+aa.payment_term, 
+aa.date_due, 
+aa.courier_ref_no, 
+aa.move_id, 
+aa.account_id, 
+aa.reconcile_id, 
+aa.reconcile_partial_id, 
+aa.po_date, 
+aa.po_number, 
+aa.days_old, 
+aa.partner_id, 
+aa.id, 
+COALESCE(cc.currency,'INR') as currency, 
+bb.id as address_contact_id, 
+aa.credit, 
+aa.debit,
+'0' as invoice_amount_inr,
+'' as invoice_flag,
+aa.debit-aa.credit as residual_inr
+from 
+( select
+a.name as customer_name, 
+a.customer_code, 
+d.date as date_invoice , 
+'On Account '||c.name as number,
+'0' as total_amount, 
+'0' as residual, 
+null as payment_term, 
+d.date as date_due, 
+null as courier_ref_no, 
+d.move_id, 
+d.account_id, 
+null as reconcile_id, 
+null as reconcile_partial_id, 
+null as po_date, 
+null as po_number, 
+'0' as days_old, 
+d.partner_id, 
+null as id, 
+d.currency_id, 
+null as address_contact_id, 
+d.credit, 
+d.debit,
+d.amount_currency
+from 
+res_partner a, account_move_line d, account_move c, account_journal g, account_account h, account_account_type i
+where 
+d.partner_id=a.id and
+d.move_id=c.id and
+reconcile_id is null and
+reconcile_partial_id is null and
+d.journal_id=g.id and
+g.type  in ('bank','sale_refund','general') and d.partner_id is not null and c.state='posted' and d.account_id=h.id and h.user_type=i.id and i.code='receivable') as  aa
+
+left outer join
+(select min(id) as id, partner_id from res_partner_address group by partner_id) as bb
+on aa.partner_id=bb.partner_id
+
+left outer join
+(select id, name as currency from res_currency) as cc
+on aa.currency_id=cc.id
+
+) as a1
+
+left join
+(select a11.id, COALESCE(a11.name,'')||case when COALESCE(a11.email,'Not')='Not' then '' else ', email-' ||COALESCE(a11.email,'') end || case when COALESCE(a11.isd_code,'Not')='Not' then '' else ', ISD Code ' ||COALESCE(a11.isd_code,'') end||case when COALESCE(a11.phone,'Not')='Not' then '' else ', Phone ' ||COALESCE(a11.phone,'') end  as name, a11.street, a11.street2,a12.city,a13.state,a14.country,a11.zip from
+(select id, street, street2, name, zip, city_id, state_id, country_id, contact_id, email, phone, isd_code from res_partner_address ) a11
+left outer join
+(select name as city, id from res_city) a12
+on a11.city_id=a12.id
+left outer join
+(select name as state, id from res_country_state) a13
+on a11.state_id=a13.id
+left outer join
+(select name as country, id from res_country) a14
+on a11.country_id=a14.id
+
+) as a3
+on a1.address_contact_id=a3.id
+
+left join
+(select id, name as payment_term from account_payment_term ) as a2
+on a1.payment_term=a2.id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, sum(amount_currency) as amount_currency,
+a.reconcile_id, COALESCE(replace(array_to_string(array_agg(a.id),':'),' ',''),'') as payment_id from account_move_line a,  account_journal b, account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type ='sale_refund' and a.move_id=c.id and c.state='posted' group by a.reconcile_id) as b1
+on a1.reconcile_id=b1.reconcile_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_partial_id, sum(amount_currency) as amount_currency, COALESCE(replace(array_to_string(array_agg(a.id),':'),' ',''),'') as payment_id from account_move_line a,  account_journal b , account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type ='sale_refund' and a.move_id=c.id and c.state='posted' group by a.reconcile_partial_id) as c1
+on a1.reconcile_partial_id=c1.reconcile_partial_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_id, sum(amount_currency) as amount_currency, COALESCE(replace(array_to_string(array_agg(a.id),':'),' ',''),'') as payment_id from account_move_line a,  account_journal b , account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type not in ('sale','sale_refund') and a.move_id=c.id and c.state='posted' group by a.reconcile_id) as d1
+on a1.reconcile_id=d1.reconcile_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_partial_id, sum(amount_currency) as amount_currency, COALESCE(replace(array_to_string(array_agg(a.id),':'),' ',''),'') as payment_id from account_move_line a,  account_journal b, account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type not in ('sale','sale_refund') and a.move_id=c.id and c.state='posted' group by a.reconcile_partial_id) as e1
+on a1.reconcile_partial_id=e1.reconcile_partial_id  
+
+left join
+(select a.invoice_id, COALESCE(replace(array_to_string(array_agg(b.customer_po_no),','),' ',''),'') as customer_po_no from sale_order_invoice_rel a, sale_order b where a.order_id=b.id group by a.invoice_id) f1
+on a1.id=f1.invoice_id
+
+left join
+(select sum(b.credit) as credit, sum(b.debit) as debit, b.account_id from account_move a, account_move_line b where a.id=b.move_id and a.state='posted' group by account_id) g1
+on a1.account_id=g1.account_id
+
+
+left join
+(
+select a.partner_id, a.marketing_zone_id, b.name as marketing_zone from
+(select partner_id, max(marketing_zone) as marketing_zone_id from res_partner_address group by partner_id ) a, Res_marketing_zone b where b.id=a.marketing_zone_id
+) h1
+on a1.partner_id=h1.partner_id
+
+) aa,
+
+
+(select 
+sum(COALESCE(a1.total_amount,'0')) as amount_partner_total, 
+sum(COALESCE(d1.refund_credit,'0') + COALESCE(e1.refund_credit,'0'))  as payment_partner_amount,
+sum(COALESCE(b1.refund_credit,'0') + COALESCE(c1.refund_credit,'0'))  as credit_note_partner_amount,
+sum(COALESCE(a1.residual,'0')) as residual_partner_amount, 
+a1.partner_id, a1.currency,
+sum(COALESCE(a1.debit)) as partner_invoice_debit,
+sum(COALESCE(a1.credit)) as partner_invoice_credit,
+sum(COALESCE(d1.refund_debit,'0') + COALESCE(e1.refund_debit,'0'))  as payment_partner_amount_debit,
+sum(COALESCE(d1.amount_currency,'0') + COALESCE(e1.amount_currency,'0'))  as payment_partner_currency,
+sum(COALESCE(b1.refund_debit,'0') + COALESCE(c1.refund_debit,'0'))  as credit_note_partner_amount_debit,
+sum(COALESCE(b1.amount_currency,'0') + COALESCE(c1.amount_currency,'0'))  as credit_note_partner_currency
+
+from
+(select a.name as customer_name,  a.customer_code customer_code, b.date_invoice, case when COALESCE(invoice_no_by_user,'0')='0' then b.number else to_char(invoice_no_by_user,'99999') end as number, b.total_amount, case when total_amount < 0 then -1* b.residual else b.residual end as residual, b.payment_term, b.date_due, b.courier_ref_no, b.move_id, b.account_id, d.reconcile_id, d.reconcile_partial_id, b.po_date, b.po_number, b.date_due - current_date as days_old, b.partner_id, b.id, e.name as currency, b.address_contact_id, d.credit, d.debit from res_partner a, account_invoice b, (select sum(credit) as credit, sum(debit) as debit, max(reconcile_id) as reconcile_id, max(reconcile_partial_id) as reconcile_partial_id, account_id, move_id from account_move_line group by account_id, move_id) as d, res_currency e  where b.type= 'out_invoice' and b.partner_id=a.id and b.move_id=d.move_id and b.account_id=d.account_id and b.state='open' and b.currency_id=e.id 
+Union
+select 
+aa.customer_name, 
+aa.customer_code, 
+aa.date_invoice , 
+aa.number,
+aa.total_amount, 
+case when COALESCE(cc.currency,'INR')='INR' then  aa.debit-aa.credit else aa.amount_currency end as residual, 
+aa.payment_term, 
+aa.date_due, 
+aa.courier_ref_no, 
+aa.move_id, 
+aa.account_id, 
+aa.reconcile_id, 
+aa.reconcile_partial_id, 
+aa.po_date, 
+aa.po_number, 
+aa.days_old, 
+aa.partner_id, 
+aa.id, 
+COALESCE(cc.currency,'INR') as currency, 
+bb.id as address_contact_id, 
+aa.credit, 
+aa.debit
+from 
+( select
+a.name as customer_name, 
+a.customer_code, 
+d.date as date_invoice , 
+'On Account '||c.name as number,
+'0' as total_amount, 
+'0' as residual, 
+null as payment_term, 
+d.date as date_due, 
+null as courier_ref_no, 
+d.move_id, 
+d.account_id, 
+null as reconcile_id, 
+null as reconcile_partial_id, 
+null as po_date, 
+null as po_number, 
+'0' as days_old, 
+d.partner_id, 
+null as id, 
+d.currency_id, 
+null as address_contact_id, 
+d.credit, 
+d.debit,
+d.amount_currency
+from 
+res_partner a, account_move_line d, account_move c, account_journal g, account_account h, account_account_type i
+where 
+d.partner_id=a.id and
+d.move_id=c.id and
+reconcile_id is null and
+reconcile_partial_id is null and
+d.journal_id=g.id and
+g.type  in ('bank','sale_refund','general') and d.partner_id is not null and c.state='posted' and d.account_id=h.id and h.user_type=i.id and i.code='receivable') as  aa
+left outer join
+(select min(id) as id, partner_id from res_partner_address group by partner_id) as bb
+on aa.partner_id=bb.partner_id
+left outer join
+(select id, name as currency from res_currency) as cc
+on aa.currency_id=cc.id
+
+
+) as a1
+
+left join
+(select a11.id, COALESCE(a11.name,'')||case when COALESCE(a11.email,'Not')='Not' then '' else ', email-' ||COALESCE(a11.email,'') end || case when COALESCE(a11.isd_code,'Not')='Not' then '' else ', ISD Code ' ||COALESCE(a11.isd_code,'') end||case when COALESCE(a11.phone,'Not')='Not' then '' else ', Phone ' ||COALESCE(a11.phone,'') end  as name, a11.street, a11.street2,a12.city,a13.state,a14.country, a11.zip from
+(select id, street, street2, name, zip, city_id, state_id, country_id, contact_id, email, phone, isd_code from res_partner_address ) a11
+left outer join
+(select name as city, id from res_city) a12
+on a11.city_id=a12.id
+left outer join
+(select name as state, id from res_country_state) a13
+on a11.state_id=a13.id
+left outer join
+(select name as country, id from res_country) a14
+on a11.country_id=a14.id
+
+) as a3
+on a1.address_contact_id=a3.id
+
+left join
+(select id, name as payment_term from account_payment_term ) as a2
+on a1.payment_term=a2.id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, sum(amount_currency) as amount_currency,
+a.reconcile_id, COALESCE(replace(array_to_string(array_agg(a.id),':'),' ',''),'') as payment_id from account_move_line a,  account_journal b, account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type ='sale_refund' and a.move_id=c.id and c.state='posted' group by a.reconcile_id) as b1
+on a1.reconcile_id=b1.reconcile_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_partial_id, sum(amount_currency) as amount_currency, COALESCE(replace(array_to_string(array_agg(a.id),':'),' ',''),'') as payment_id from account_move_line a,  account_journal b , account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type ='sale_refund' and a.move_id=c.id and c.state='posted' group by a.reconcile_partial_id) as c1
+on a1.reconcile_partial_id=c1.reconcile_partial_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_id, sum(amount_currency) as amount_currency, COALESCE(replace(array_to_string(array_agg(a.id),':'),' ',''),'') as payment_id from account_move_line a,  account_journal b , account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type not in ('sale','sale_refund') and a.move_id=c.id and c.state='posted' group by a.reconcile_id) as d1
+on a1.reconcile_id=d1.reconcile_id
+
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.reconcile_partial_id, sum(amount_currency) as amount_currency, COALESCE(replace(array_to_string(array_agg(a.id),':'),' ',''),'') as payment_id from account_move_line a,  account_journal b, account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type not in ('sale','sale_refund') and a.move_id=c.id and c.state='posted' group by a.reconcile_partial_id) as e1
+on a1.reconcile_partial_id=e1.reconcile_partial_id  
+group by a1.partner_id, a1.currency) bb
+where aa.partner_id=bb.partner_id and aa.currency=bb.currency ) aabb

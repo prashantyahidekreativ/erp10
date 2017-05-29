@@ -1,0 +1,23 @@
+select COALESCE(g.name,'NONE') as product_group,
+COALESCE(sum(case when g.pitch_format='pitch' then product_qty else '0' end),'0') as parallel_qty,
+COALESCE(sum(case when g.pitch_format='TPI' then product_qty else '0' end),'0') as taper_qty
+from 
+stock_move a, product_template b, product_category c, product_product d, stock_location e, stock_location f, product_group g
+where 
+a.product_id=d.id and
+d.product_tmpl_id=b.id and
+b.product_category_id=c.id and
+a.location_id=e.id and
+a.location_dest_id=f.id and
+a.state='done' and
+b.product_group_id=g.id  and
+e.location_type in ('product_consumption_brg',
+'product_consumption_spg',
+'product_consumption_srg') and
+
+c.sales_type= %s and
+a.date between %s and %s and
+b.dia_mm between %s and %s
+
+group by COALESCE(g.name,'NONE')
+Order by COALESCE(g.name,'NONE')

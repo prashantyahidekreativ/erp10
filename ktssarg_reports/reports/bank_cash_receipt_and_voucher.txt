@@ -1,0 +1,68 @@
+select 
+cc.transaction_number,
+cc.statement_id, cc.account_name, dd.code, cc.partner_id, cc.partner_name,
+array_to_string(array_agg(cc.ref),',') as ref,
+array_to_string(array_agg(cc.narration),',') as narration,
+array_to_string(array_agg(dd.internal_number1),',') as internal_number,
+array_to_string(array_agg(dd.internal_number2),',') as partial_internal_number, 
+replace(array_to_string(array_agg(to_char(dd.invoice_no_by_user1,'999999')),','),' ','') as invoice_no_by_user1,
+replace(array_to_string(array_agg(to_char(dd.invoice_no_by_user2,'999999')),','),' ','') as invoice_no_by_user2,
+dd.account_name as counter_account_name, sum(case when dd.debit > 0 then case when dd.currency='INR' then dd.debit else dd.amount_currency end else 0 end) as debit , sum(case when dd.credit > 0 then case when dd.currency='INR' then dd.credit else dd.amount_currency*-1 end else 0 end) as credit,
+ee.transaction_type,
+cc.bank_cash,
+cc.transaction_date,
+dd.id,
+cc.move_reference,
+dd.currency
+from
+(select aa.move_reference, aa.id, aa.statement_id, aa.move_id, aa.ref, aa.narration, aa.account_name, aa.code,aa.partner_id, bb.name as partner_name,  aa.debit,aa.credit, aa.bank_cash, aa.transaction_number, aa.transaction_date, case when aa.debit > 0 then 'VOUCHER' else 'RECEIPT' end as Transaction_type  
+from 
+(select a.move_id as move_reference, a.id, a.statement_id, a.move_id, a.ref, a.name as narration, b.name as account_name, b.code,  a.debit,a.credit, a.partner_id,c.name as bank_cash, d.name as transaction_number, d.date as transaction_date from
+account_move_line a, account_account b, account_account_type c, account_move d
+where
+a.statement_id= %s
+and
+a.account_id=b.id
+and b.user_type=c.id
+and c.name in ('Bank','Cash','Bank_CC') and a.move_id=d.id) aa
+left join res_partner  bb
+on
+aa.partner_id=bb.id ) cc, 
+
+(select aa.id, aa.statement_id, aa.move_id, aa.ref, aa.narration, aa.account_name, aa.code,aa.partner_id, bb.name as partner_name,  aa.debit,aa.credit, case when aa.debit > 0 then 'VOUCHER' else 'RECEIPT' end as Transaction_type,j.internal_number as internal_number1 ,j.invoice_no_by_user as invoice_no_by_user1, k.internal_number as internal_number2, k.invoice_no_by_user as invoice_no_by_user2, aa.amount_currency, COALESCE(l.currency,'INR') as currency
+from 
+(select a.id, a.statement_id, a.move_id, a.ref, a.name as narration, b.name as account_name, b.code,  a.debit,a.credit, a.partner_id, a.reconcile_id, a.reconcile_partial_id, a.amount_currency, a.currency_id 
+from
+account_move_line a, account_account b
+where
+a.statement_id= %s and a.account_id=b.id) aa
+left join res_partner  bb
+on
+aa.partner_id=bb.id
+left join 
+(select e.id, e.move_id, e.reconcile_id,f.number,f.internal_number, f.invoice_no_by_user  from account_move_line e, account_invoice f where e.move_id=f.move_id and e.reconcile_id is not null  ) as j 
+on aa.reconcile_id=j.reconcile_id
+
+left join (select g.id, g.move_id, g.reconcile_partial_id,h.number,h.internal_number, h.invoice_no_by_user  from account_move_line g, account_invoice h  where g.move_id=h.move_id and g.reconcile_partial_id is not null) as k on aa.reconcile_partial_id=k.reconcile_partial_id
+
+left join
+(select id, name as currency from res_currency) l
+on l.id=aa.currency_id
+
+) dd,
+
+(select aa.statement_id, aa.code, case when aa.credit - aa.debit > 0 then 'VOUCHER' else 'RECEIPT' end as Transaction_type  
+from 
+(select a.statement_id, b.code,  sum(a.debit) as debit, sum(a.credit) as credit from
+account_move_line a, account_account b, account_account_type c, account_move d
+where
+a.account_id=b.id
+and b.user_type=c.id
+and c.name in ('Bank','Cash','Bank_CC') and a.move_id=d.id group by a.statement_id, b.code) aa
+) ee
+
+where cc.move_id=dd.move_id and cc.id != dd.id and cc.statement_id=ee.statement_id and cc.code=ee.code
+group by 
+dd.id, cc.transaction_number, cc.statement_id,  cc.account_name, dd.code, cc.partner_id, cc.partner_name, dd.account_name, ee.transaction_type, cc.bank_cash, cc.transaction_date, cc.move_reference, dd.currency
+order by
+cc.move_reference, ee.transaction_type, cc.account_name, cc.partner_name, dd.id

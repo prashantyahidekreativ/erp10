@@ -1,0 +1,269 @@
+select aa.rec_order, aa.journal_name, 
+sum(coalesce(aa.frg_qty,'0')) as frg_qty,
+sum(coalesce(aa.srg_qty,'0')) as srg_qty,
+sum(coalesce(aa.spg_qty,'0')) as spg_qty,
+sum(coalesce(aa.ppg_qty,'0')) as ppg_qty,
+sum(coalesce(aa.other_qty,'0')) as other_qty,
+sum(coalesce(aa.frg_value,'0')) as frg_value,
+sum(coalesce(aa.srg_value,'0')) as srg_value,
+sum(coalesce(aa.spg_value,'0')) as spg_value,
+sum(coalesce(aa.ppg_value,'0')) as ppg_value,
+sum(coalesce(aa.other_value,'0')) as other_value
+from 
+(select '1' as rec_order,aa.id, aa.journal_name,
+coalesce(ad.frg_qty,'0') as frg_qty,
+coalesce(ad.srg_qty,'0') as srg_qty,
+coalesce(ad.spg_qty,'0') as spg_qty,
+coalesce(ad.ppg_qty,'0') as ppg_qty,
+coalesce(ad.other_qty,'0') as other_qty,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.frg_value,'0') else  ae.total_amount*coalesce(ad.frg_value,'0')/ae.amount_currency end as frg_value,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.srg_value,'0') else  ae.total_amount*coalesce(ad.srg_value,'0')/ae.amount_currency end as srg_value,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.spg_value,'0') else  ae.total_amount*coalesce(ad.spg_value,'0')/ae.amount_currency end as spg_value,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.ppg_value,'0') else  ae.total_amount*coalesce(ad.ppg_value,'0')/ae.amount_currency end as ppg_value,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.other_value,'0') else  ae.total_amount*coalesce(ad.other_value,'0')/ae.amount_currency end as other_value
+from
+(select a.id, a.journal_id,b.name as journal_name, a.currency_id,
+e.name as currency, a.partner_id, c.name as partner, a.amount_untaxed, a.total_amount as amount_total, a.freight_charges, a.packing_charges, a.invoice_no_by_user, a.date_invoice, a.move_id, a.account_id
+from account_invoice a, res_currency e, res_partner c, account_journal b
+where a.type='out_invoice' and a.state in ('paid','open')
+and
+a.currency_id=e.id
+and
+a.journal_id=b.id
+and
+a.partner_id=c.id
+) as aa
+inner join
+(select a.id,a.account_id,sum(b.amount_currency) as amount_currency, sum(debit) as total_amount from account_invoice a, account_move_line b where a.move_id=b.move_id and a.account_id=b.account_id
+group by a.id,a.account_id
+) as ae
+on aa.id=ae.id and aa.account_id=ae.account_id
+left outer join
+(select e.invoice_id, array_to_string(array_agg(e.name),',') as tax_detail
+from 
+(select distinct a.id as invoice_id,d.name as name, d.tax_category as tax_category from account_invoice a, account_invoice_line b, account_invoice_line_tax c, account_tax d
+where 
+a.id=b.invoice_id
+and 
+b.id=c.invoice_line_id
+and
+c.tax_id=d.id) as e group by e.invoice_id ) as ab
+on 
+aa.id=ab.invoice_id
+left outer join
+(select b.invoice_id, 
+sum(b.ecess_on_cenvat_tax_amount) as ecess_on_cenvat_tax_amount, sum(b.ecess_on_cenvat_base_amount) as ecess_on_cenvat_base_amount,
+sum(b.hcess_on_cenvat_tax_amount) as hcess_on_cenvat_tax_amount,sum(b.hcess_on_cenvat_base_amount) as hcess_on_cenvat_base_amount,
+sum(b.cenvat_tax_amount) as cenvat_tax_amount,sum(b.cenvat_base_amount) as cenvat_base_amount,
+sum(b.cst_tax_amount) as cst_tax_amount,sum(b.cst_base_amount) as cst_base_amount,
+sum(b.mvat_tax_amount) as mvat_tax_amount,sum(b.mvat_base_amount) as mvat_base_amount,
+sum(b.ecess_on_service_tax_tax_amount) as ecess_on_service_tax_tax_amount,sum(b.ecess_on_service_tax_base_amount) as ecess_on_service_tax_base_amount,
+sum(b.hcess_on_service_tax_tax_amount) as hcess_on_service_tax_tax_amount,sum(b.hcess_on_service_tax_base_amount) as hcess_on_service_tax_base_amount,
+sum(b.service_tax_tax_amount) as service_tax_tax_amount,sum(b.service_tax_base_amount) as service_tax_base_amount
+from 
+(select a.invoice_id, 
+case when a.tax_category='ecess_on_cenvat' then a.tax_amount else '0' end as ecess_on_cenvat_tax_amount, 
+case when a.tax_category='hcess_on_service_tax' then a.tax_amount else '0' end as hcess_on_service_tax_tax_amount,
+case when a.tax_category='service_tax' then a.tax_amount else '0' end as service_tax_tax_amount,
+case when a.tax_category='ecess_on_service_tax' then a.tax_amount else '0' end as ecess_on_service_tax_tax_amount,
+case when a.tax_category='cst' then a.tax_amount else '0' end as cst_tax_amount,
+case when a.tax_category='cenvat' then a.tax_amount else '0' end as cenvat_tax_amount,
+case when a.tax_category='hcess_on_cenvat' then a.tax_amount else '0' end as hcess_on_cenvat_tax_amount,
+case when a.tax_category='mvat' then a.tax_amount else '0' end as mvat_tax_amount,
+
+case when a.tax_category='ecess_on_cenvat' then a.base_amount else '0' end as ecess_on_cenvat_base_amount, 
+case when a.tax_category='hcess_on_service_tax' then a.base_amount else '0' end as hcess_on_service_tax_base_amount,
+case when a.tax_category='service_tax' then a.base_amount else '0' end as service_tax_base_amount,
+case when a.tax_category='ecess_on_service_tax' then a.base_amount else '0' end as ecess_on_service_tax_base_amount,
+case when a.tax_category='cst' then a.base_amount else '0' end as cst_base_amount,
+case when a.tax_category='cenvat' then a.base_amount else '0' end as cenvat_base_amount,
+case when a.tax_category='hcess_on_cenvat' then a.base_amount else '0' end as hcess_on_cenvat_base_amount,
+case when a.tax_category='mvat' then a.base_amount else '0' end as mvat_base_amount
+from account_invoice_tax a ) as b 
+group by b.invoice_id ) as ac
+on aa.id=ac.invoice_id
+left outer join
+(
+
+select d.invoice_id,
+sum(d.frg_qty) as frg_qty,
+sum(d.srg_qty) as srg_qty,
+sum(d.spg_qty) as spg_qty,
+sum(d.ppg_qty) as ppg_qty,
+sum(d.other_qty) as other_qty,
+sum(d.frg_value) as frg_value,
+sum(d.srg_value) as srg_value,
+sum(d.spg_value) as spg_value,
+sum(d.ppg_value) as ppg_value,
+sum(d.other_value) as other_value
+from
+(
+
+select ag.invoice_line_id,ag.invoice_id, ag.frg_qty, ag.srg_qty, ag.spg_qty, ag.ppg_qty, ag.other_qty, 
+case when ag.frg_qty >0 then ag.price_subtotal else '0' end as frg_value, 
+case when ag.frg_qty <=0 and ag.srg_qty > 0 then ag.price_subtotal else '0' end as srg_value,
+case when ag.frg_qty <=0 and ag.srg_qty <=0 and ag.spg_qty > 0 then price_subtotal else '0' end as spg_value,
+case when ag.frg_qty <=0 and ag.srg_qty <=0 and ag.spg_qty <= 0 and ag.ppg_qty >0 then price_subtotal else '0' end as ppg_value,
+case when ag.frg_qty <=0 and ag.srg_qty <=0 and ag.spg_qty <= 0 and ag.ppg_qty <=0 and ag.other_qty> 0 then price_subtotal else '0' end as other_value
+from
+(select sum(ah.frg_qty) as frg_qty,sum(ah.srg_qty) as srg_qty,sum(ah.spg_qty) as spg_qty, sum(ah.ppg_qty) as ppg_qty,sum(ah.other_qty) as other_qty,max(ah.price_subtotal) as price_subtotal,ah.invoice_line_id,ah.invoice_id  from
+
+(
+select a.id as invoice_line_id, b.id as product_id,a.invoice_id, 
+case when c.sales_type='frg' then quantity else '0' end as frg_qty,
+case when c.sales_type='srg' then quantity else '0' end as srg_qty,
+case when c.sales_type='spg' then quantity else '0' end as spg_qty,
+case when c.sales_type='ppg' then quantity else '0' end as ppg_qty,
+case when c.sales_type='other' then quantity when c.sales_type is null then quantity else '0' end as other_qty,
+price_subtotal
+from account_invoice_line a, product_template b, product_category c where a.product_id=b.id and b.product_category_id =c.id and b.domain in ('service_product', 'other_product','product') 
+union
+select a.id as invoice_line_id, f.id as product_id, a.invoice_id, 
+case when c.sales_type='frg' then quantity else '0' end as frg_qty,
+case when c.sales_type='srg' then quantity else '0' end as srg_qty,
+case when c.sales_type='spg' then quantity else '0' end as spg_qty,
+case when c.sales_type='ppg' then quantity else '0' end as ppg_qty,
+case when c.sales_type='other' then quantity when c.sales_type is null then quantity else '0' end as other_qty,
+price_subtotal
+from account_invoice_line a, product_template b, mrp_bom d, mrp_bom e, product_category c, product_template f
+where 
+a.product_id=b.id and
+b.id=d.product_id and
+d.bom_id is null and
+d.id=e.bom_id and
+e.product_id=f.id and
+f.product_category_id =c.id and b.domain in ('assembly')) as ah group by ah.invoice_line_id,ah.invoice_id  ) ag
+
+) as d group by d.invoice_id 
+
+
+) as ad
+on
+aa.id=ad.invoice_id
+where aa.date_invoice between %s and %s
+union
+select '2' as rec_order,aa.id, aa.journal_name,
+coalesce(ad.frg_qty,'0') as frg_qty,
+coalesce(ad.srg_qty,'0') as srg_qty,
+coalesce(ad.spg_qty,'0') as spg_qty,
+coalesce(ad.ppg_qty,'0') as ppg_qty,
+coalesce(ad.other_qty,'0') as other_qty,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.frg_value,'0') else  ae.total_amount*coalesce(ad.frg_value,'0')/ae.amount_currency end as frg_value,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.srg_value,'0') else  ae.total_amount*coalesce(ad.srg_value,'0')/ae.amount_currency end as srg_value,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.spg_value,'0') else  ae.total_amount*coalesce(ad.spg_value,'0')/ae.amount_currency end as spg_value,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.ppg_value,'0') else  ae.total_amount*coalesce(ad.ppg_value,'0')/ae.amount_currency end as ppg_value,
+case when coalesce(ae.amount_currency,'0')=0 then coalesce(ad.other_value,'0') else  ae.total_amount*coalesce(ad.other_value,'0')/ae.amount_currency end as other_value
+from
+(select a.id, a.journal_id,b.name as journal_name, a.currency_id,
+e.name as currency, a.partner_id, c.name as partner, a.amount_untaxed, a.total_amount as amount_total, a.freight_charges, a.packing_charges, a.invoice_no_by_user, a.date_invoice, a.move_id, a.account_id
+from account_invoice a, res_currency e, res_partner c, account_journal b
+where a.type='out_refund' and a.state in ('paid','open')
+and
+a.currency_id=e.id
+and
+a.journal_id=b.id
+and
+a.partner_id=c.id
+) as aa
+inner join
+(select a.id,a.account_id,sum(b.amount_currency) as amount_currency, sum(debit) as total_amount from account_invoice a, account_move_line b where a.move_id=b.move_id and a.account_id=b.account_id
+group by a.id,a.account_id
+) as ae
+on aa.id=ae.id and aa.account_id=ae.account_id
+left outer join
+(select e.invoice_id, array_to_string(array_agg(e.name),',') as tax_detail
+from 
+(select distinct a.id as invoice_id,d.name as name, d.tax_category as tax_category from account_invoice a, account_invoice_line b, account_invoice_line_tax c, account_tax d
+where 
+a.id=b.invoice_id
+and 
+b.id=c.invoice_line_id
+and
+c.tax_id=d.id) as e group by e.invoice_id ) as ab
+on 
+aa.id=ab.invoice_id
+left outer join
+(select b.invoice_id, 
+sum(b.ecess_on_cenvat_tax_amount) as ecess_on_cenvat_tax_amount, sum(b.ecess_on_cenvat_base_amount) as ecess_on_cenvat_base_amount,
+sum(b.hcess_on_cenvat_tax_amount) as hcess_on_cenvat_tax_amount,sum(b.hcess_on_cenvat_base_amount) as hcess_on_cenvat_base_amount,
+sum(b.cenvat_tax_amount) as cenvat_tax_amount,sum(b.cenvat_base_amount) as cenvat_base_amount,
+sum(b.cst_tax_amount) as cst_tax_amount,sum(b.cst_base_amount) as cst_base_amount,
+sum(b.mvat_tax_amount) as mvat_tax_amount,sum(b.mvat_base_amount) as mvat_base_amount,
+sum(b.ecess_on_service_tax_tax_amount) as ecess_on_service_tax_tax_amount,sum(b.ecess_on_service_tax_base_amount) as ecess_on_service_tax_base_amount,
+sum(b.hcess_on_service_tax_tax_amount) as hcess_on_service_tax_tax_amount,sum(b.hcess_on_service_tax_base_amount) as hcess_on_service_tax_base_amount,
+sum(b.service_tax_tax_amount) as service_tax_tax_amount,sum(b.service_tax_base_amount) as service_tax_base_amount
+from 
+(select a.invoice_id, 
+case when a.tax_category='ecess_on_cenvat' then a.tax_amount else '0' end as ecess_on_cenvat_tax_amount, 
+case when a.tax_category='hcess_on_service_tax' then a.tax_amount else '0' end as hcess_on_service_tax_tax_amount,
+case when a.tax_category='service_tax' then a.tax_amount else '0' end as service_tax_tax_amount,
+case when a.tax_category='ecess_on_service_tax' then a.tax_amount else '0' end as ecess_on_service_tax_tax_amount,
+case when a.tax_category='cst' then a.tax_amount else '0' end as cst_tax_amount,
+case when a.tax_category='cenvat' then a.tax_amount else '0' end as cenvat_tax_amount,
+case when a.tax_category='hcess_on_cenvat' then a.tax_amount else '0' end as hcess_on_cenvat_tax_amount,
+case when a.tax_category='mvat' then a.tax_amount else '0' end as mvat_tax_amount,
+
+case when a.tax_category='ecess_on_cenvat' then a.base_amount else '0' end as ecess_on_cenvat_base_amount, 
+case when a.tax_category='hcess_on_service_tax' then a.base_amount else '0' end as hcess_on_service_tax_base_amount,
+case when a.tax_category='service_tax' then a.base_amount else '0' end as service_tax_base_amount,
+case when a.tax_category='ecess_on_service_tax' then a.base_amount else '0' end as ecess_on_service_tax_base_amount,
+case when a.tax_category='cst' then a.base_amount else '0' end as cst_base_amount,
+case when a.tax_category='cenvat' then a.base_amount else '0' end as cenvat_base_amount,
+case when a.tax_category='hcess_on_cenvat' then a.base_amount else '0' end as hcess_on_cenvat_base_amount,
+case when a.tax_category='mvat' then a.base_amount else '0' end as mvat_base_amount
+from account_invoice_tax a ) as b 
+group by b.invoice_id ) as ac
+on aa.id=ac.invoice_id
+left outer join
+(select d.invoice_id,
+sum(d.frg_qty) as frg_qty,
+sum(d.srg_qty) as srg_qty,
+sum(d.spg_qty) as spg_qty,
+sum(d.ppg_qty) as ppg_qty,
+sum(d.other_qty) as other_qty,
+sum(d.frg_value) as frg_value,
+sum(d.srg_value) as srg_value,
+sum(d.spg_value) as spg_value,
+sum(d.ppg_value) as ppg_value,
+sum(d.other_value) as other_value
+from
+(
+select ag.invoice_line_id,ag.invoice_id, ag.frg_qty, ag.srg_qty, ag.spg_qty, ag.ppg_qty, ag.other_qty, 
+case when ag.frg_qty >0 then ag.price_subtotal else '0' end as frg_value, 
+case when ag.frg_qty <=0 and ag.srg_qty > 0 then ag.price_subtotal else '0' end as srg_value,
+case when ag.frg_qty <=0 and ag.srg_qty <=0 and ag.spg_qty > 0 then price_subtotal else '0' end as spg_value,
+case when ag.frg_qty <=0 and ag.srg_qty <=0 and ag.spg_qty <= 0 and ag.ppg_qty >0 then price_subtotal else '0' end as ppg_value,
+case when ag.frg_qty <=0 and ag.srg_qty <=0 and ag.spg_qty <= 0 and ag.ppg_qty <=0 and ag.other_qty> 0 then price_subtotal else '0' end as other_value
+from
+(select sum(ah.frg_qty) as frg_qty,sum(ah.srg_qty) as srg_qty,sum(ah.spg_qty) as spg_qty, sum(ah.ppg_qty) as ppg_qty,sum(ah.other_qty) as other_qty,max(ah.price_subtotal) as price_subtotal,ah.invoice_line_id,ah.invoice_id  from
+(
+select a.id as invoice_line_id, b.id as product_id,a.invoice_id, 
+case when c.sales_type='frg' then quantity else '0' end as frg_qty,
+case when c.sales_type='srg' then quantity else '0' end as srg_qty,
+case when c.sales_type='spg' then quantity else '0' end as spg_qty,
+case when c.sales_type='ppg' then quantity else '0' end as ppg_qty,
+case when c.sales_type='other' then quantity when c.sales_type is null then quantity else '0' end as other_qty,
+price_subtotal
+from account_invoice_line a, product_template b, product_category c where a.product_id=b.id and b.product_category_id =c.id and b.domain in ('service_product', 'other_product','product') 
+union
+select a.id as invoice_line_id, f.id as product_id, a.invoice_id, 
+case when c.sales_type='frg' then quantity else '0' end as frg_qty,
+case when c.sales_type='srg' then quantity else '0' end as srg_qty,
+case when c.sales_type='spg' then quantity else '0' end as spg_qty,
+case when c.sales_type='ppg' then quantity else '0' end as ppg_qty,
+case when c.sales_type='other' then quantity when c.sales_type is null then quantity else '0' end as other_qty,
+price_subtotal
+from account_invoice_line a, product_template b, mrp_bom d, mrp_bom e, product_category c, product_template f
+where 
+a.product_id=b.id and
+b.id=d.product_id and
+d.bom_id is null and
+d.id=e.bom_id and
+e.product_id=f.id and
+f.product_category_id =c.id and b.domain in ('assembly') ) as ah group by ah.invoice_line_id,ah.invoice_id  ) ag
+) as d group by d.invoice_id ) as ad
+on
+aa.id=ad.invoice_id
+where aa.date_invoice between %s and %s ) aa
+group by aa.rec_order, aa.journal_name
+order by aa.rec_order, aa.journal_name

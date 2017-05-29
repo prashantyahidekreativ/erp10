@@ -1,0 +1,167 @@
+select 
+case when COALESCE(dd.date,'2000-01-01')='2000-01-01' then case when COALESCE(cc.date,'2000-01-01')='2000-01-01' then case when COALESCE(aa.date,'2000-01-01')='2000-01-01' then case when COALESCE(cc.date,'2000-01-01')='2000-01-01' then '2000-01-01' else cc.date end else aa.date end else cc.date end else dd.date end as date, 
+COALESCE(aa.frg_qty_rework,'0') frg_qty_rework, 
+COALESCE(aa.srg_qty_rework,'0') srg_qty_rework, 
+COALESCE(aa.spg_qty_rework,'0') spg_qty_rework, 
+COALESCE(aa.ppg_qty_rework,'0') ppg_qty_rework, 
+COALESCE(aa.other_qty_rework,'0') other_qty_rework, 
+COALESCE(bb.frg_qty_rej,'0') frg_qty_rej, 
+COALESCE(bb.srg_qty_rej,'0') srg_qty_rej, 
+COALESCE(bb.spg_qty_rej,'0') spg_qty_rej, 
+COALESCE(bb.ppg_qty_rej,'0') ppg_qty_rej, 
+COALESCE(bb.other_qty_rej,'0') other_qty_rej,
+COALESCE(cc.frg_qty_ok,'0') frg_qty_ok, 
+COALESCE(cc.srg_qty_ok,'0') srg_qty_ok, 
+COALESCE(cc.spg_qty_ok,'0') spg_qty_ok, 
+COALESCE(cc.ppg_qty_ok,'0') ppg_qty_ok, 
+COALESCE(cc.other_qty_ok,'0') other_qty_ok,
+COALESCE(dd.frg_qty_in,'0') frg_qty_in, 
+COALESCE(dd.srg_qty_in,'0') srg_qty_in, 
+COALESCE(dd.spg_qty_in,'0') spg_qty_in, 
+COALESCE(dd.ppg_qty_in,'0') ppg_qty_in, 
+COALESCE(dd.other_qty_in,'0') other_qty_in,
+1000 as frg_qty_balance,
+1000 as srg_qty_balance,
+1000 as spg_qty_balance,
+1000 as ppg_qty_balance,
+1000 as other_qty_balance,
+COALESCE(ee.frg_qty_mfg,'0') frg_qty_mfg, 
+COALESCE(ee.srg_qty_mfg,'0') srg_qty_mfg, 
+COALESCE(ee.spg_qty_mfg,'0') spg_qty_mfg, 
+COALESCE(ee.ppg_qty_mfg,'0') ppg_qty_mfg, 
+COALESCE(ee.other_qty_mfg,'0') other_qty_mfg,
+COALESCE(ff.frg_qty_stock,'0') frg_qty_stock, 
+COALESCE(ff.srg_qty_stock,'0') srg_qty_stock, 
+COALESCE(ff.spg_qty_stock,'0') spg_qty_stock, 
+COALESCE(ff.ppg_qty_stock,'0') ppg_qty_stock, 
+COALESCE(ff.other_qty_stock,'0') other_qty_stock
+from
+(select to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD') as date,
+sum(case when c.sales_type='frg' then product_qty else '0' end) as frg_qty_in,
+sum(case when c.sales_type='srg' then product_qty else '0' end) as srg_qty_in,
+sum(case when c.sales_type='spg' then product_qty else '0' end) as spg_qty_in,
+sum(case when c.sales_type='ppg' then product_qty else '0' end) as ppg_qty_in,
+sum(case when c.sales_type='other' then product_qty when c.sales_type is null then product_qty else product_qty*0 end) as other_qty_in
+from stock_move a, product_template b, product_category c, product_product d, stock_location e, stock_location f
+where 
+a.product_id=d.id and
+d.product_tmpl_id=b.id and
+b.product_category_id=c.id and
+a.location_id=e.id and
+a.location_dest_id=f.id and
+a.state='done' and 
+f.location_type in ('final_inspection_spg_brg',
+'final_inspection_srg') and a.prodlot_id in (select prodlot_id from stock_move g, stock_location h where g.location_id=h.id and h.location_type in('product_consumption_brg', 'product_consumption_srg','product_consumption_spg') and g.state='done')
+group by to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) dd
+FULL OUTER JOIN
+(select to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD') as date,
+sum(case when c.sales_type='frg' then product_qty else '0' end) as frg_qty_ok,
+sum(case when c.sales_type='srg' then product_qty else '0' end) as srg_qty_ok,
+sum(case when c.sales_type='spg' then product_qty else '0' end) as spg_qty_ok,
+sum(case when c.sales_type='ppg' then product_qty else '0' end) as ppg_qty_ok,
+sum(case when c.sales_type='other' then product_qty when c.sales_type is null then product_qty else product_qty*0 end) as other_qty_ok
+from stock_move a, product_template b, product_category c, product_product d, stock_location e, stock_location f
+where 
+a.product_id=d.id and
+d.product_tmpl_id=b.id and
+b.product_category_id=c.id and
+a.location_id=e.id and
+a.location_dest_id=f.id and
+a.state='done' and
+e.location_type in ('final_inspection_spg_brg',
+'final_inspection_srg') and
+f.location_type not in ('rework_area','scrap_area') and a.prodlot_id in (select prodlot_id from stock_move g, stock_location h where g.location_id=h.id and h.location_type in('product_consumption_brg', 'product_consumption_srg','product_consumption_spg') and g.state='done')
+group by to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) cc
+on
+dd.date=cc.date
+Full OUTER JOIN
+(select to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD') as date,
+sum(case when c.sales_type='frg' then product_qty else '0' end) as frg_qty_rework,
+sum(case when c.sales_type='srg' then product_qty else '0' end) as srg_qty_rework,
+sum(case when c.sales_type='spg' then product_qty else '0' end) as spg_qty_rework,
+sum(case when c.sales_type='ppg' then product_qty else '0' end) as ppg_qty_rework,
+sum(case when c.sales_type='other' then product_qty when c.sales_type is null then product_qty else product_qty*0 end) as other_qty_rework
+from stock_move a, product_template b, product_category c, product_product d, stock_location e, stock_location f
+where 
+a.product_id=d.id and
+d.product_tmpl_id=b.id and
+b.product_category_id=c.id and
+a.location_id=e.id and
+a.location_dest_id=f.id and
+a.state='done' and
+e.location_type in ('final_inspection_spg_brg',
+'final_inspection_srg') and
+f.location_type in ('rework_area') and a.prodlot_id in (select prodlot_id from stock_move g, stock_location h where g.location_id=h.id and h.location_type in('product_consumption_brg', 'product_consumption_srg','product_consumption_spg') and g.state='done')
+group by to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) aa
+on
+dd.date=aa.date
+Full outer Join
+(select to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD') as date,
+sum(case when c.sales_type='frg' then product_qty else '0' end) as frg_qty_rej,
+sum(case when c.sales_type='srg' then product_qty else '0' end) as srg_qty_rej,
+sum(case when c.sales_type='spg' then product_qty else '0' end) as spg_qty_rej,
+sum(case when c.sales_type='ppg' then product_qty else '0' end) as ppg_qty_rej,
+sum(case when c.sales_type='other' then product_qty when c.sales_type is null then product_qty else product_qty*0 end) as other_qty_rej
+from stock_move a, product_template b, product_category c, product_product d, stock_location e, stock_location f
+where 
+a.product_id=d.id and
+d.product_tmpl_id=b.id and
+b.product_category_id=c.id and
+a.location_id=e.id and
+a.location_dest_id=f.id and
+a.state='done' and
+e.location_type in ('final_inspection_spg_brg',
+'final_inspection_srg') and
+f.location_type in ('scrap_area') and a.prodlot_id in (select prodlot_id from stock_move g, stock_location h where g.location_id=h.id and h.location_type in('product_consumption_brg', 'product_consumption_srg','product_consumption_spg') and g.state='done')
+group by to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) bb
+on
+dd.date=bb.date
+
+Full outer Join
+(select to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD') as date,
+sum(case when c.sales_type='frg' then product_qty else '0' end) as frg_qty_mfg,
+sum(case when c.sales_type='srg' then product_qty else '0' end) as srg_qty_mfg,
+sum(case when c.sales_type='spg' then product_qty else '0' end) as spg_qty_mfg,
+sum(case when c.sales_type='ppg' then product_qty else '0' end) as ppg_qty_mfg,
+sum(case when c.sales_type='other' then product_qty when c.sales_type is null then product_qty else product_qty*0 end) as other_qty_mfg
+from stock_move a, product_template b, product_category c, product_product d, stock_location e, stock_location f
+where 
+a.product_id=d.id and
+d.product_tmpl_id=b.id and
+b.product_category_id=c.id and
+a.location_id=e.id and
+a.location_dest_id=f.id and
+a.state='done' and
+e.location_type in ('final_inspection_spg_brg',
+'final_inspection_srg') and
+f.location_type in ('product_assembly','packing_pdi_delivery_zone') and a.prodlot_id in (select prodlot_id from stock_move g, stock_location h where g.location_id=h.id and h.location_type in('product_consumption_brg', 'product_consumption_srg','product_consumption_spg') and g.state='done')
+group by to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) ee
+on
+dd.date=ee.date
+
+Full outer Join
+(select to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD') as date,
+sum(case when c.sales_type='frg' then product_qty else '0' end) as frg_qty_stock,
+sum(case when c.sales_type='srg' then product_qty else '0' end) as srg_qty_stock,
+sum(case when c.sales_type='spg' then product_qty else '0' end) as spg_qty_stock,
+sum(case when c.sales_type='ppg' then product_qty else '0' end) as ppg_qty_stock,
+sum(case when c.sales_type='other' then product_qty when c.sales_type is null then product_qty else product_qty*0 end) as other_qty_stock
+from stock_move a, product_template b, product_category c, product_product d, stock_location e, stock_location f
+where 
+a.product_id=d.id and
+d.product_tmpl_id=b.id and
+b.product_category_id=c.id and
+a.location_id=e.id and
+a.location_dest_id=f.id and
+a.state='done' and
+e.location_type in ('final_inspection_spg_brg',
+'final_inspection_srg') and
+f.location_type in ('component_stores') and a.prodlot_id in (select prodlot_id from stock_move g, stock_location h where g.location_id=h.id and h.location_type in('product_consumption_brg', 'product_consumption_srg','product_consumption_spg') and g.state='done')
+group by to_date(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) ff
+on
+dd.date=ff.date
+
+where
+case when COALESCE(cc.date,'2000-01-01')='2000-01-01' then case when COALESCE(aa.date,'2000-01-01')='2000-01-01' then case when COALESCE(cc.date,'2000-01-01')='2000-01-01' then '2000-01-01' else cc.date end else aa.date end else cc.date end between %s and %s
+Order by 
+case when COALESCE(cc.date,'2000-01-01')='2000-01-01' then case when COALESCE(aa.date,'2000-01-01')='2000-01-01' then case when COALESCE(cc.date,'2000-01-01')='2000-01-01' then '2000-01-01' else cc.date end else aa.date end else cc.date end

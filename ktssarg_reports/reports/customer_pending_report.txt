@@ -1,0 +1,221 @@
+select 
+COALESCE(aaa.prod_name,'') as prod_name, 
+COALESCE(aaa.OA_ref,'') as OA_ref, 
+COALESCE(aaa.partner_name,'') as partner_name,  
+COALESCE(aaa.prod_uom,'') as prod_uom, 
+COALESCE(aaa.total_order_qty,'0') as total_order_qty,
+COALESCE(aaa.date_confirm,'2000-01-01') as date_confirm , 
+COALESCE(aaa.delay,'0') as delay, 
+COALESCE(aaa.order_acceptance_ref,'') as order_acceptance_ref, 
+COALESCE(aaa.order_acceptance_ref_no_by_user,'0') as order_acceptance_ref_no_by_user, 
+COALESCE(aaa.customer_po_no) as customer_po_no, 
+COALESCE(aaa.customer_po_date,'2000-01-01') as customer_po_date, 
+COALESCE(aaa.proforma_invoice_no,'') as proforma_invoice_no,
+COALESCE(aaa.sequence) as sequence, 
+COALESCE(aaa.partner_id,'0') as partner_id, 
+COALESCE(aaa.service,'f') as service,
+COALESCE(bbb.pending_for_alloc_qty,'0') as pending_for_alloc_qty,
+COALESCE(ccc.pending_packinglist_wo_prodlot,'0') as pending_packinglist_wo_prodlot,
+COALESCE(ddd.pending_packinglist_with_prodlot,'0') as pending_packinglist_with_prodlot,
+COALESCE(eee.pending_packing_wo_prodlot,'0') as pending_packing_wo_prodlot,
+COALESCE(fff.pending_packing_with_prodlot,'0') as pending_packing_with_prodlot,
+COALESCE(ggg.pending_for_invoice_qty,'0') as pending_for_invoice_qty,
+COALESCE(hhh.invoiced_qty,'0') as invoiced_qty,
+COALESCE(iii.cancelled_qty,'0') as cancelled_qty
+
+from
+(
+
+select a.id as sale_id, a.name as OA_ref, a.partner_id, i.name as partner_name, b.product_id, f.name as prod_name, h.name as product_uom, h.name as prod_uom, a.date_confirm , round(b.delay::numeric,0)::numeric as delay, a.order_acceptance_ref_no as order_acceptance_ref,  a.order_acceptance_ref_no_by_user, a.customer_po_no, b.sequence, a.customer_po_date, a.proforma_invoice_no, a.service, b.product_uom_qty * h.factor/c.factor  as total_order_qty
+from
+sale_order a, sale_order_line b,product_uom c, product_template d, product_category e, product_product f, product_uom h, res_partner i
+where 
+a.id=b.order_id and
+b.product_uom=c.id and
+b.product_id=f.id and
+f.product_tmpl_id=d.id and
+d.product_category_id=e.id and
+d.uom_id=h.id and
+a.partner_id=i.id and 
+(
+(a.state in ('manual','progress','shipping_except','invoice_except')) or 
+
+(a.state='done' and a.id in (select sale_id from stock_picking where state in ('done','assigned','confirmed') and invoice_state ='2binvoiced')  
+ and a.order_policy='picking'))
+
+)  aaa
+
+left outer join
+(
+select 
+a.sale_id, 
+b.product_id, 
+b.product_uom, 
+c.name as picking_uom, 
+sum(b.product_qty * f.factor/c.factor ) as pending_for_alloc_qty, 
+b.sequence 
+from stock_picking a, stock_move b, product_uom c, product_product d, product_template e, product_uom f
+where a.id=b.picking_id and 
+b.product_uom=c.id and
+b.product_id=d.id and
+d.product_tmpl_id=e.id and
+e.uom_id=f.id and
+b.state in ('confirmed') and
+a.type='out'
+group by a.sale_id, a.invoice_state, b.state, b.sequence, b.product_id, b.product_uom, c.name ) bbb
+on
+aaa.sale_id=bbb.sale_id and aaa.product_id=bbb.product_id and aaa.sequence=bbb.sequence
+
+
+left outer join
+(
+select 
+a.sale_id, 
+b.product_id, 
+b.product_uom, 
+c.name as picking_uom, 
+sum(b.product_qty * f.factor/c.factor ) as pending_packinglist_wo_prodlot, 
+b.sequence 
+from stock_picking a, stock_move b, product_uom c, product_product d, product_template e, product_uom f
+where a.id=b.picking_id and 
+b.product_uom=c.id and
+b.product_id=d.id and
+d.product_tmpl_id=e.id and
+e.uom_id=f.id and
+b.state in ('assigned') and
+b.prodlot_id is null and
+a.type='out' and a.packing_id is null
+group by a.sale_id, a.invoice_state, b.state, b.sequence, b.product_id, b.product_uom, c.name ) ccc
+on
+aaa.sale_id=ccc.sale_id and aaa.product_id=ccc.product_id and aaa.sequence=ccc.sequence
+
+left outer join
+(
+select 
+a.sale_id, 
+b.product_id, 
+b.product_uom, 
+c.name as picking_uom, 
+sum(b.product_qty * f.factor/c.factor ) as pending_packinglist_with_prodlot, 
+b.sequence 
+from stock_picking a, stock_move b, product_uom c, product_product d, product_template e, product_uom f
+where a.id=b.picking_id and 
+b.product_uom=c.id and
+b.product_id=d.id and
+d.product_tmpl_id=e.id and
+e.uom_id=f.id and
+b.state in ('assigned') and
+b.prodlot_id is not null and
+a.type='out' and a.packing_id is null
+group by a.sale_id, a.invoice_state, b.state, b.sequence, b.product_id, b.product_uom, c.name ) ddd
+on
+aaa.sale_id=ddd.sale_id and aaa.product_id=ddd.product_id and aaa.sequence=ddd.sequence
+
+left outer join
+(
+select 
+a.sale_id, 
+b.product_id, 
+b.product_uom, 
+c.name as picking_uom, 
+sum(b.product_qty * f.factor/c.factor ) as pending_packing_wo_prodlot, 
+b.sequence 
+from stock_picking a, stock_move b, product_uom c, product_product d, product_template e, product_uom f
+where a.id=b.picking_id and 
+b.product_uom=c.id and
+b.product_id=d.id and
+d.product_tmpl_id=e.id and
+e.uom_id=f.id and
+b.state in ('assigned') and
+b.prodlot_id is null and
+a.type='out' and a.packing_id is not null
+group by a.sale_id, a.invoice_state, b.state, b.sequence, b.product_id, b.product_uom, c.name ) eee
+on
+aaa.sale_id=eee.sale_id and aaa.product_id=eee.product_id and aaa.sequence=eee.sequence
+
+left outer join
+(
+select 
+a.sale_id, 
+b.product_id, 
+b.product_uom, 
+c.name as picking_uom, 
+sum(b.product_qty * f.factor/c.factor ) as pending_packing_with_prodlot, 
+b.sequence 
+from stock_picking a, stock_move b, product_uom c, product_product d, product_template e, product_uom f
+where a.id=b.picking_id and 
+b.product_uom=c.id and
+b.product_id=d.id and
+d.product_tmpl_id=e.id and
+e.uom_id=f.id and
+b.state in ('assigned') and
+b.prodlot_id is not null and
+a.type='out' and a.packing_id is not null
+group by a.sale_id, a.invoice_state, b.state, b.sequence, b.product_id, b.product_uom, c.name ) fff
+on
+aaa.sale_id=fff.sale_id and aaa.product_id=fff.product_id and aaa.sequence=fff.sequence
+
+
+left outer join
+(
+select 
+a.sale_id, 
+b.product_id, 
+b.product_uom, 
+c.name as picking_uom, 
+sum(b.product_qty * f.factor/c.factor ) as pending_for_invoice_qty, 
+b.sequence 
+from stock_picking a, stock_move b, product_uom c, product_product d, product_template e, product_uom f
+where a.id=b.picking_id and 
+b.product_uom=c.id and
+b.product_id=d.id and
+d.product_tmpl_id=e.id and
+e.uom_id=f.id and
+b.state in ('done') and
+a.type='out' and a.invoice_state !='invoiced'
+group by a.sale_id, a.invoice_state, b.state, b.sequence, b.product_id, b.product_uom, c.name ) ggg
+on
+aaa.sale_id=ggg.sale_id and aaa.product_id=ggg.product_id and aaa.sequence=ggg.sequence
+
+left outer join
+(
+select 
+a.sale_id, 
+b.product_id, 
+b.product_uom, 
+c.name as picking_uom, 
+sum(b.product_qty * f.factor/c.factor ) as invoiced_qty, 
+b.sequence 
+from stock_picking a, stock_move b, product_uom c, product_product d, product_template e, product_uom f
+where a.id=b.picking_id and 
+b.product_uom=c.id and
+b.product_id=d.id and
+d.product_tmpl_id=e.id and
+e.uom_id=f.id and
+b.state in ('done') and
+a.type='out' and a.invoice_state ='invoiced'
+group by a.sale_id, a.invoice_state, b.state, b.sequence, b.product_id, b.product_uom, c.name ) hhh
+on
+aaa.sale_id=hhh.sale_id and aaa.product_id=hhh.product_id and aaa.sequence=hhh.sequence
+
+
+left outer join
+(
+select 
+a.sale_id, 
+b.product_id, 
+b.product_uom, 
+c.name as picking_uom, 
+sum(b.product_qty * f.factor/c.factor ) as cancelled_qty, 
+b.sequence 
+from stock_picking a, stock_move b, product_uom c, product_product d, product_template e, product_uom f
+where a.id=b.picking_id and 
+b.product_uom=c.id and
+b.product_id=d.id and
+d.product_tmpl_id=e.id and
+e.uom_id=f.id and
+b.state in ('cancel') and
+a.type='out'
+group by a.sale_id, a.invoice_state, b.state, b.sequence, b.product_id, b.product_uom, c.name ) iii
+on
+aaa.sale_id=iii.sale_id and aaa.product_id=iii.product_id and aaa.sequence=iii.sequence

@@ -1,0 +1,79 @@
+select 
+COALESCE(aaaa.product_id,'0') as product_id, 
+COALESCE(aaaa.product_name,'') as product_name,
+COALESCE(aaaa.po_no,'') as po_no,
+COALESCE(aaaa.partner_name,'') as partner_name, 
+COALESCE(aaaa.order_qty,'0') as order_qty,
+COALESCE(aaaa.date_planed,'2000-01-01') as date_planed,
+COALESCE(aaaa.product_uom,'') as product_uom,
+COALESCE(aaaa.date_order,'2000-01-01') as date_order,
+COALESCE(aaaa.supplied_qty,'0') as supplied_qty,
+COALESCE(aaaa.partner_id,'0') as partner_id
+from
+(select 
+COALESCE(aa.product_id,'0') as product_id, 
+COALESCE(aa.product_name,'') as product_name,
+COALESCE(aa.po_no,'') as po_no,
+COALESCE(aa.partner_name,'') as partner_name, 
+COALESCE(aa.order_qty,'0') as order_qty,
+COALESCE(aa.date_planned,'2000-01-01') as date_planed,
+COALESCE(aa.product_uom,'') as product_uom,
+COALESCE(aa.date_order,'2000-01-01') as date_order,
+COALESCE(bb.supplied_qty,'0') as supplied_qty,
+COALESCE(aa.partner_id,'0') as partner_id
+from
+(select 
+a.id,
+a.date_order,
+a.partner_id,
+a.name as po_no,
+b.product_id, 
+b.name as product_name,
+c.name as partner_name, 
+b.product_qty * f.factor/d.factor as order_qty,
+b.date_planned,
+f.name as product_uom,
+b.sequence 
+from purchase_order a, purchase_order_line b, res_partner c, product_uom d, product_product e, product_uom f, product_template g where
+a.id = b.order_id and
+a.partner_id = c.id and
+b.product_uom = d.id and
+b.product_id = e.id and
+e.product_tmpl_id = g.id and
+g.uom_id = f.id and
+a.state in ('approved','except_picking', 'except_invoice')) aa
+
+left outer join
+(select 
+a.sequence,
+b.purchase_id,
+sum(a.product_qty * f.factor/e.factor) supplied_qty
+from stock_move a, stock_picking b, product_product c, product_template d, product_uom e, product_uom f where
+a.picking_id = b.id and
+a.product_uom = e.id and
+a.product_id = c.id and
+c.product_tmpl_id = d.id and
+d.uom_id = f.id and
+a.state = 'done' and 
+b.type='in'
+group by a.sequence,b.purchase_id
+) bb
+ on bb.purchase_id=aa.id and bb.sequence=aa.sequence
+
+left outer join
+(select 
+a.sequence,
+b.purchase_id,
+sum(a.product_qty * f.factor/e.factor) supplied_qty
+from stock_move a, stock_picking b, product_product c, product_template d, product_uom e, product_uom f where
+a.picking_id = b.id and
+a.product_uom = e.id and
+a.product_id = c.id and
+c.product_tmpl_id = d.id and
+d.uom_id = f.id and
+a.state in ('confirmed','assigned') and b.type='in'
+group by a.sequence,b.purchase_id
+) cc
+on cc.purchase_id=aa.id and cc.sequence=aa.sequence 
+where cc.supplied_qty >0
+) aaaa

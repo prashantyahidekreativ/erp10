@@ -1,0 +1,134 @@
+select 
+COALESCE(aa.id,'0') as id, 
+COALESCE(aa.journal_name,'') as journal_name,
+COALESCE(aa.currency,'') as currency, 
+COALESCE(aa.partner,'') as partner, 
+COALESCE(ae.payment_term,'Not Specified') as payment_term,
+COALESCE(aa.amount_untaxed,'0') - COALESCE(aj.round_amount,'0') as amount_untaxed,
+COALESCE(aa.amount_total,'0') as amount_total,
+COALESCE(aa.freight_charges,'0') as freight_charges, 
+COALESCE(aa.packing_charges,'0') as packing_charges,
+case when coalesce(aa.invoice_no_by_user,'0')=0 then COALESCE(aa.number,'') else  COALESCE(aa.number,'') end as invoice_no_by_user, 
+aa.date_invoice,
+COALESCE(aa.fiscal_position,'') as fiscal_position, 
+case when ab.tax_detail is null then COALESCE(aa.fiscal_position,'') else COALESCE(ab.tax_detail,'') end as tax_detail,
+COALESCE(ac.ecess_on_cenvat_tax_amount,'0') as ecess_on_cenvat_tax_amount,
+COALESCE(ac.ecess_on_cenvat_base_amount,'0') as ecess_on_cenvat_base_amount,
+COALESCE(ac.hcess_on_cenvat_tax_amount,'0') as hcess_on_cenvat_tax_amount,
+COALESCE(ac.hcess_on_cenvat_base_amount,'0') as hcess_on_cenvat_base_amount,
+COALESCE(ac.cenvat_tax_amount,'0') as cenvat_tax_amount,
+COALESCE(ac.cenvat_base_amount,'0') as cenvat_base_amount,
+COALESCE(ac.cst_tax_amount,'0') as cst_tax_amount,
+COALESCE(ac.cst_base_amount,'0') as cst_base_amount,
+COALESCE(ac.mvat_tax_amount,'0') as mvat_tax_amount,
+COALESCE(ac.mvat_base_amount,'0') as mvat_base_amount,
+COALESCE(ac.ecess_on_service_tax_tax_amount,'0') as ecess_on_service_tax_tax_amount,
+COALESCE(ac.ecess_on_service_tax_base_amount,'0') as ecess_on_service_tax_base_amount,
+COALESCE(ac.hcess_on_service_tax_tax_amount,'0') as hcess_on_service_tax_tax_amount,
+COALESCE(ac.hcess_on_service_tax_base_amount,'0') as hcess_on_service_tax_base_amount,
+COALESCE(ac.service_tax_tax_amount,'0') as service_tax_tax_amount,
+COALESCE(ac.service_tax_base_amount,'0') as service_tax_base_amount, 
+COALESCE(aa.purchase_order_doc,'') as purchase_order_doc,
+COALESCE(ak.account_name,'') as account_name,
+COALESCE(aj.round_amount,'0') as round_amount,
+COALESCE(ao.bill_no,'0') as bill_no,
+COALESCE(ao.bill_date,'2000-01-01') as bill_date
+from
+(select a.id, a.journal_id,b.name as journal_name, a.currency_id,
+e.name as currency, a.partner_id, c.name as partner, a.payment_term, a.amount_untaxed, a.total_amount as amount_total, a.freight_charges, a.packing_charges, a.invoice_no_by_user, a.date_invoice, f.name as fiscal_position, a.number as purchase_order_doc, a.number
+from account_invoice a, res_currency e, res_partner c, account_journal b, account_fiscal_position f
+where a.type='in_refund' and a.state in ('paid','open')
+and
+a.currency_id=e.id
+and
+a.journal_id=b.id
+and
+a.partner_id=c.id
+and
+a.fiscal_position = f.id) as aa
+
+left outer join
+(select id, name as payment_term from account_payment_term) as ae
+on
+aa.payment_term=ae.id
+
+left outer join
+(select az.id, array_to_string(array_agg(az.account_name),',') as account_name from 
+(select distinct a.id, c.name as account_name from account_invoice a, account_invoice_line b, account_account c where a.id=b.invoice_id and b.account_id=c.id and c.code !='E19326000011') az
+group by az.id ) ak
+on 
+ak.id=aa.id
+
+left outer join
+(select az.id, sum(az.price_subtotal) as round_amount from 
+(select a.id, b.price_subtotal from account_invoice a, account_invoice_line b, account_account c where a.id=b.invoice_id and b.account_id=c.id and c.code ='E19326000011') az
+group by az.id ) aj
+on 
+aj.id=aa.id
+
+left outer join
+(select e.invoice_id, array_to_string(array_agg(e.name),',') as tax_detail
+from 
+(select distinct a.id as invoice_id,d.name as name, d.tax_category as tax_category from account_invoice a, account_invoice_line b, account_invoice_line_tax c, account_tax d
+where 
+a.id=b.invoice_id
+and 
+b.id=c.invoice_line_id
+and
+c.tax_id=d.id) as e group by e.invoice_id ) as ab
+on 
+aa.id=ab.invoice_id
+
+
+left outer join
+(
+select a1.id, COALESCE(a2.bill_no,'')||COALESCE(a3.bill_no,'') as bill_no, COALESCE(a2.bill_date,'')||COALESCE(a3.bill_date,'') as bill_date from
+
+(select a.id, a.move_id, a.account_id, b.reconcile_id, b.reconcile_partial_id from account_invoice a, (select account_id, max(reconcile_id) as reconcile_id, max(reconcile_partial_id) as reconcile_partial_id, move_id from account_move_line group by account_id, move_id) b
+where a.move_id=b.move_id and a.account_id=b.account_id and a.type='in_refund' and a.state in ('paid','open')
+) a1
+
+left outer join
+(select array_to_string(array_agg(a.name),',') as bill_no, array_to_string(array_agg(a.date),',') as bill_date, b.reconcile_id from account_move a, account_move_line b, account_journal c where a.id=b.move_id and b.reconcile_id is not null and a.journal_id=c.id and c.type ='purchase' group by b.reconcile_id) a2
+on a1.reconcile_id=a2.reconcile_id
+
+left outer join
+(select array_to_string(array_agg(a.name),',') as bill_no, array_to_string(array_agg(a.date),',') as bill_date, b.reconcile_partial_id from account_move a, account_move_line b, account_journal c where a.id=b.move_id and b.reconcile_partial_id is not null and a.journal_id=c.id and c.type ='purchase' group by b.reconcile_Partial_id) a3
+on a1.reconcile_partial_id=a3.reconcile_Partial_id ) ao
+on aa.id = ao.id
+
+
+left outer join
+(select b.invoice_id, 
+sum(b.ecess_on_cenvat_tax_amount) as ecess_on_cenvat_tax_amount, sum(b.ecess_on_cenvat_base_amount) as ecess_on_cenvat_base_amount,
+sum(b.hcess_on_cenvat_tax_amount) as hcess_on_cenvat_tax_amount,sum(b.hcess_on_cenvat_base_amount) as hcess_on_cenvat_base_amount,
+sum(b.cenvat_tax_amount) as cenvat_tax_amount,sum(b.cenvat_base_amount) as cenvat_base_amount,
+sum(b.cst_tax_amount) as cst_tax_amount,sum(b.cst_base_amount) as cst_base_amount,
+sum(b.mvat_tax_amount) as mvat_tax_amount,sum(b.mvat_base_amount) as mvat_base_amount,
+sum(b.ecess_on_service_tax_tax_amount) as ecess_on_service_tax_tax_amount,sum(b.ecess_on_service_tax_base_amount) as ecess_on_service_tax_base_amount,
+sum(b.hcess_on_service_tax_tax_amount) as hcess_on_service_tax_tax_amount,sum(b.hcess_on_service_tax_base_amount) as hcess_on_service_tax_base_amount,
+sum(b.service_tax_tax_amount) as service_tax_tax_amount,sum(b.service_tax_base_amount) as service_tax_base_amount
+from 
+(select a.invoice_id, 
+case when a.tax_category='ecess_on_cenvat' then a.tax_amount else '0' end as ecess_on_cenvat_tax_amount, 
+case when a.tax_category='hcess_on_service_tax' then a.tax_amount else '0' end as hcess_on_service_tax_tax_amount,
+case when a.tax_category='service_tax' then a.tax_amount else '0' end as service_tax_tax_amount,
+case when a.tax_category='ecess_on_service_tax' then a.tax_amount else '0' end as ecess_on_service_tax_tax_amount,
+case when a.tax_category='cst' then a.tax_amount else '0' end as cst_tax_amount,
+case when a.tax_category='cenvat' then a.tax_amount else '0' end as cenvat_tax_amount,
+case when a.tax_category='hcess_on_cenvat' then a.tax_amount else '0' end as hcess_on_cenvat_tax_amount,
+case when a.tax_category='mvat' then a.tax_amount else '0' end as mvat_tax_amount,
+
+case when a.tax_category='ecess_on_cenvat' then a.base_amount else '0' end as ecess_on_cenvat_base_amount, 
+case when a.tax_category='hcess_on_service_tax' then a.base_amount else '0' end as hcess_on_service_tax_base_amount,
+case when a.tax_category='service_tax' then a.base_amount else '0' end as service_tax_base_amount,
+case when a.tax_category='ecess_on_service_tax' then a.base_amount else '0' end as ecess_on_service_tax_base_amount,
+case when a.tax_category='cst' then a.base_amount else '0' end as cst_base_amount,
+case when a.tax_category='cenvat' then a.base_amount else '0' end as cenvat_base_amount,
+case when a.tax_category='hcess_on_cenvat' then a.base_amount else '0' end as hcess_on_cenvat_base_amount,
+case when a.tax_category='mvat' then a.base_amount else '0' end as mvat_base_amount
+from account_invoice_tax a ) as b 
+group by b.invoice_id ) as ac
+on aa.id=ac.invoice_id
+where aa.date_invoice between %s and %s
+order by aa.journal_id, aa.date_invoice, aa.invoice_no_by_user

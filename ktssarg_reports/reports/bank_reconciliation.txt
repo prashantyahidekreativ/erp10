@@ -1,0 +1,49 @@
+select 
+COALESCE(aaa.date,'2000-01-01') as date, 
+COALESCE(aaa.cheque_number,'') as cheque_number, 
+COALESCE(aaa.particulars,'') as particulars, 
+COALESCE(aaa.amount,'0') as amount, 
+COALESCE(aaa.recon_date,'2000-01-01') as recon_date, 
+COALESCE(aaa.currency,'NA') as currency , 
+COALESCE(aaa.type,'NA') as type,
+COALESCE(aaa.journal_id,'0') as journal_id
+from
+(select  
+COALESCE(a.date,'2000-01-01') as date, 
+COALESCE(a.reference,'') as cheque_number, 
+COALESCE(case when COALESCE(c.name,'NA')='NA' then '' else c.name || ' ' end || case when COALESCE(a.number,'NA')='NA' then '' else a.number end,'') as particulars, 
+COALESCE(a.amount,'0') as amount, 
+COALESCE(a.recon_date,'2000-01-01') as recon_date, 
+COALESCE(b.name,'NA') as currency , 
+COALESCE(a.type,'NA') as type,
+COALESCE(a.journal_id,'0') as journal_id
+from account_voucher a, res_currency b, res_partner c where a.payment_rate_currency_id=b.id and a.partner_id=c.id and (COALESCE(a.recon_date,'2000-01-01') <%s or COALESCE(a.recon_date,'2000-01-01') > %s) and a.date between %s and %s and a.state='posted' 
+and a.id not in (select distinct COALESCE(voucher_id,'-1') from account_bank_statement_line aa, account_bank_statement bb  where aa.statement_id=bb.id and bb.state='confirm') 
+union
+select 
+COALESCE(aa.date,'2000-01-01') as date, 
+COALESCE(bb.reference,'') as cheque_number, 
+COALESCE(case when COALESCE(cc.partner_name,'NA')='NA' then '' else cc.partner_name || ' 'end || case when COALESCE(dd.name,'NA')='NA' then '' else dd.name ||' ' end || case when COALESCE(aa.name,'NA')='NA' then '' else aa.name end,'') as particulars, 
+case when COALESCE(aa.amount,'0') < 0 then -1*COALESCE(aa.amount,'0') else COALESCE(aa.amount,'0') end as amount, 
+COALESCE(aa.recon_date,'2000-01-01') as recon_date, 
+COALESCE(ee.name,'NA') as currency , 
+case when COALESCE(aa.amount,'0') < 0 then 'payment' else 'receipt' end as type,
+COALESCE(aa.journal_id,'0') as journal_id
+from
+(select id, date, payment_ammount as amount, COALESCE(recon_date,'2000-01-01') as recon_date, journal_id, name from account_bank_statement where state='confirm' and (COALESCE(recon_date,'2000-01-01') <%s or COALESCE(recon_date,'2000-01-01') > %s) and date between %s and %s) aa
+left outer join
+(select array_to_string(array_agg(aa.ref),',') as reference, statement_id from (select distinct statement_id, ref from account_bank_statement_line) aa group by aa.statement_id ) bb
+on aa.id=bb.statement_id
+left outer join
+(
+select array_to_string(array_agg(bb.name),',') as partner_name, statement_id from
+(select distinct statement_id, partner_id from account_bank_statement_line) aa, res_partner bb where aa.partner_id=bb.id group by aa.statement_id ) cc
+on aa.id=cc.statement_id
+left outer join   
+(select array_to_string(array_agg(a.name),',') as name, a.statement_id from
+(select distinct statement_id, name from account_bank_statement_line) a group by a.statement_id) dd
+on aa.id=dd.statement_id
+left outer join
+(select array_to_string(array_agg(a.name),',') as name, a.statement_id from
+(select distinct b.name, a.statement_id from account_move_line a, res_currency b where a.currency_id=b.id) a group by a.statement_id) ee
+on aa.id=ee.statement_id ) aaa

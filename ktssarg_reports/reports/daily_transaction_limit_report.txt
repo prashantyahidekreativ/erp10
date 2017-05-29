@@ -1,0 +1,13 @@
+select aaa.document, aaa.journal_id, aaa.journal_name, aaa.deposit, aaa.payment, aaa.partner, aaa.date from
+(select
+array_to_string(array_agg(aa.document),',') as document, aa.journal_id, aa.journal_name, sum(aa.deposit) as deposit, sum(aa.payment) as payment, Replace(Replace (aa.partner,'Receivable',''),'Payable','') as partner, aa.date
+from
+(select a.name as document, a.journal_id, c.name as journal_name, sum(b.debit) as payment, sum(b.credit) as deposit, b.account_id, b.date, d.name as partner from account_move a, account_move_line b, account_journal c, account_account d where
+a.id=b.move_id and
+a.journal_id=c.id and
+b.account_id=d.id and
+d.type in ('receivable', 'payable', 'other')
+group by a.name, a.journal_id, c.name, b.account_id, b.date, d.name ) aa
+
+group by 
+aa.journal_id, aa.journal_name, Replace(Replace (aa.partner,'Receivable',''),'Payable',''), aa.date ) aaa

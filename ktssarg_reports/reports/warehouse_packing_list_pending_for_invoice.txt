@@ -1,0 +1,37 @@
+select  
+COALESCE(partner_name,'') as partner_name,
+COALESCE(partner_id,'0') as partner_id, 
+COALESCE(OA_ref||', Picking Policy -'||aaaa.picking_policy,'') || case when COALESCE(aaaa.payment_term,'-NA')='-NA' then '' else ', Payment Term-'|| aaaa.payment_term end as OA_ref,
+COALESCE(date_confirm,'2000-01-01') as date_confirm, 
+COALESCE(aaaa.sale_id,'0') as sale_id,
+COALESCE(aaaa.customer_po_no) as customer_po_no,
+COALESCE(order_acceptance_ref,'') as order_acceptance_ref, 
+COALESCE(packing_id,'') as packing_id,
+COALESCE(aaaa.service,'f') as service,
+COALESCE(aaaa.out_number,'') as out_number
+
+from 
+(select  aaa.OA_ref, aaa.partner_name,  bbb.picking_invoice_status,
+ aaa.date_confirm , aaa.order_acceptance_ref,aaa.order_acceptance_ref_no_by_user, aaa.partner_id, aaa.customer_po_no, aaa.sale_id, aaa.picking_policy, fff.payment_term, bbb.packing_id as packing_id, COALESCE(aaa.service,'f') as service, bbb.out_number
+from
+(select aa.sale_id, aa.OA_ref, aa.partner_id, af.name as partner_name, aa.date_confirm , aa.order_acceptance_ref,  aa.order_acceptance_ref_no_by_user, aa.customer_po_no, aa.picking_policy, aa.payment_term, aa.service
+from
+(select a.id as sale_id, a.name as OA_ref, a.partner_id, a.date_confirm as date_confirm, a.order_acceptance_ref_no as order_acceptance_ref, a.order_acceptance_ref_no_by_user, a.customer_po_no, a.picking_policy, a.payment_term, a.service
+from sale_order a
+where a.state in ('manual','progress','shipping_except','invoice_except')  or (a.state='done' and a.id in (select sale_id from stock_picking where state='done' and invoice_state ='2binvoiced')  
+ and a.order_policy='picking'))  aa, res_partner af
+where 
+aa.partner_id=af.id)  aaa
+
+inner join
+(select a.origin, a.invoice_state as picking_invoice_status, a.packing_id as packing_id, a.name as out_number, a.sale_id from stock_picking a
+where a.state in ('done') and invoice_state not in ('invoiced','none') and a.type='out'
+) bbb
+on
+aaa.sale_id=bbb.sale_id
+
+left outer join
+(
+select id, name as payment_term from account_payment_term ) fff
+on aaa.payment_term=fff.id
+) aaaa

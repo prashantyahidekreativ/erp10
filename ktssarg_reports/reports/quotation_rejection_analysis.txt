@@ -1,0 +1,10 @@
+select 
+sum(aa.amount_untaxed), 
+count(*) as rejection_count, 
+bb.name as rejection_reason,
+COALESCE(cc.name,'Not Available') as marketing_zone
+from
+sale_order aa
+inner join kts_rejection_reason bb on (aa.rejection_reason=bb.id)
+left join res_marketing_zone cc on (aa.marketing_zone=cc.id)
+

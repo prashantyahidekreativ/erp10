@@ -1,0 +1,20 @@
+select  
+aa.journal_seq,aa.date,aa.code, case when coalesce(aa.debit,'0') >0 then 'By' else 'To' end as particulars_part1, aa.name as particulars_part2, coalesce(aa.debit,'0') as debit, coalesce(aa.credit,'0') as credit, bb.journal_debit, bb.journal_credit, aa.ref, aa.narration
+from (
+select a.ref, a.narration,a.name as journal_seq , a.id, b.code,a.date,b.name, 
+c.credit,c.debit 
+from account_move a, account_account b, account_move_line c
+where a.id=c.move_id and a.state='posted' and c.account_id=b.id and 
+a.journal_id in (select d.id from account_journal d where d.type not in ('cash','bank','sale_refund','purchase_refund','sale','purchase')) 
+and a.date between %s and %s and a.state='posted') aa
+inner join
+(select
+a.id, sum(c.credit) as journal_credit, sum(c.debit) as journal_debit from
+account_move a, account_move_line c
+where a.id=c.move_id and 
+a.journal_id in (select d.id from account_journal d where d.type not in ('cash','bank','sale_refund','purchase_refund','sale','purchase')) 
+group by a.id) bb
+on aa.id=bb.id
+order by aa.date ASC ,aa.journal_seq ASC ,particulars_part1 ASC, aa.name ASC
+
+

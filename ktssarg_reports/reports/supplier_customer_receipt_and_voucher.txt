@@ -1,0 +1,85 @@
+select 
+cc.transaction_number,
+cc.statement_id, 
+cc.account_name, 
+cc.code, 
+cc.partner_id, 
+cc.partner_name,
+array_to_string(array_agg(cc.ref),',') as ref,
+array_to_string(array_agg(cc.narration),',') as narration,
+array_to_string(array_agg(dd.internal_number1),',') as internal_number,
+array_to_string(array_agg(dd.internal_number2),',') as partial_internal_number, 
+replace(array_to_string(array_agg(to_char(dd.invoice_no_by_user1,'999999')),','),' ','') as invoice_no_by_user1,
+replace(array_to_string(array_agg(to_char(dd.invoice_no_by_user2,'999999')),','),' ','') as invoice_no_by_user2,
+dd.account_name as counter_account_name, 
+sum(dd.debit) as debit, 
+sum(dd.credit) as credit,
+dd.transaction_type,
+replace(cc.bank_cash,'_CC','') as bank_cash,
+cc.transaction_date,
+dd.id,
+cc.move_reference,
+max(COALESCE(dd.full_invoice_amount,'0')) as full_invoice_amount,
+max(COALESCE(dd.partial_invoice_amount,'0')) as partial_invoice_amount,
+COALESCE(dd.full_invoice_type,'') as full_invoice_type,
+COALESCE(dd.partial_invoice_type,'') as partial_invoice_type,
+max(COALESCE(dd.partial_balance,'0')) as partial_balance,
+case when COALESCE(dd.full_date_invoice,'1900-01-01')='1900-01-01' then COALESCE(dd.partial_date_invoice,'1900-01-01') else COALESCE(dd.full_date_invoice,'1900-01-01') end as invoice_date
+from
+(select aa.move_reference, aa.id, aa.statement_id, aa.move_id, aa.ref, aa.narration, aa.account_name, aa.code,aa.partner_id, bb.name as partner_name,  aa.debit,aa.credit, aa.bank_cash, aa.transaction_number, aa.transaction_date 
+from 
+(select a.move_id as move_reference, a.id, a.statement_id, a.move_id, a.ref, a.name as narration, b.name as account_name, b.code,  a.debit,a.credit, a.partner_id,c.name as bank_cash, d.name as transaction_number, d.date as transaction_date from
+account_move_line a, account_account b, account_account_type c, account_move d
+where
+a.move_id=(select move_id from account_voucher where id= %s)
+and
+a.account_id=b.id
+and b.user_type=c.id
+and c.name in ('Bank','Cash','Bank_CC') and a.move_id=d.id) aa
+left join res_partner  bb
+on
+aa.partner_id=bb.id ) cc, 
+
+(select aa.id, aa.statement_id, aa.move_id, aa.ref, aa.narration, aa.account_name, aa.code,aa.partner_id, bb.name as partner_name,  aa.debit,aa.credit, case when aa.debit > 0 then 'VOUCHER' else 'RECEIPT' end as Transaction_type,j.internal_number as internal_number1 ,j.invoice_no_by_user as invoice_no_by_user1, k.internal_number as internal_number2, k.invoice_no_by_user as invoice_no_by_user2, j.total_amount as full_invoice_amount, k.total_amount as partial_invoice_amount, k.residual as partial_balance, j.type as full_invoice_type, k.type as partial_invoice_type, j.date_invoice as full_date_invoice, k.date_invoice as partial_date_invoice 
+from 
+(select a.id, a.statement_id, a.move_id, a.ref, a.name as narration, b.name as account_name, b.code,  a.debit,a.credit, a.partner_id, a.reconcile_id, a.reconcile_partial_id 
+from
+account_move_line a, account_account b
+where
+a.move_id=(select move_id from account_voucher where id= %s) and a.account_id=b.id) aa
+left join res_partner  bb
+on
+aa.partner_id=bb.id
+
+left join 
+(
+select 
+ja.id, ja.move_id, ja.reconcile_id,ja.number,ja.internal_number, ja.invoice_no_by_user, ja.residual, case when COALESCE(jb.debit,'0')= 0 then jb.credit else jb.debit end as total_amount, ja.type, ja.date_invoice from 
+(
+select e.id, e.move_id, e.reconcile_id,f.number,f.internal_number, f.invoice_no_by_user, f.residual, f.total_amount, f.type, f.date_invoice, f.account_id  from account_move_line e, account_invoice f where e.move_id=f.move_id and e.reconcile_id is not null  and f.type in ('in_invoice','out_invoice')) ja
+left outer join
+(select sum(COALESCE(debit,'0')) as debit, sum(COALESCE(credit,'0')) as credit, move_id, account_id from account_move_line a, account_move b where a.move_id=b.id and b.state='posted' group by move_id, account_id )  jb
+on ja.move_id=jb.move_id and ja.account_id=jb.account_id
+
+) as j 
+on aa.reconcile_id=j.reconcile_id
+
+left join 
+(
+select
+ka.id, ka.move_id, ka.reconcile_partial_id,ka.number,ka.internal_number, ka.invoice_no_by_user, ka.residual, case when COALESCE(kb.debit,'0')= 0 then kb.credit else kb.debit end as total_amount, ka.type, ka.date_invoice from 
+(
+select g.id, g.move_id, g.reconcile_partial_id,h.number,h.internal_number, h.invoice_no_by_user, h.residual, h.total_amount, h.type, h.date_invoice , h.account_id from account_move_line g, account_invoice h  where g.move_id=h.move_id and g.reconcile_partial_id is not null and h.type in ('in_invoice','out_invoice')) ka
+
+left outer join
+(select sum(COALESCE(debit,'0')) as debit, sum(COALESCE(credit,'0')) as credit, move_id, account_id from account_move_line a, account_move b where a.move_id=b.id and b.state='posted' group by move_id, account_id )  kb
+on ka.move_id=kb.move_id and ka.account_id=kb.account_id
+
+) as k on aa.reconcile_partial_id=k.reconcile_partial_id 
+
+) dd
+where cc.move_id=dd.move_id and cc.id != dd.id
+group by 
+dd.id, cc.transaction_number, cc.statement_id,  cc.account_name, cc.code, cc.partner_id, cc.partner_name, dd.account_name, dd.transaction_type, cc.bank_cash, cc.transaction_date, cc.move_reference, dd.full_invoice_type, dd.partial_invoice_type, dd.full_date_invoice, dd.partial_date_invoice
+order by
+cc.move_reference, dd.transaction_type, cc.account_name, cc.partner_name, dd.id

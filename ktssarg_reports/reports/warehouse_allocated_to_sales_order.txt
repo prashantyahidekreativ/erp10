@@ -1,0 +1,43 @@
+select 
+COALESCE(aaa.oa_ref,'') as oa_ref, 
+COALESCE(aaa.partner_name,'') as partner_name, 
+case when COALESCE(aaa.packing_id,'NA') != 'NA' then 'Packing Id: '|| aaa.packing_id||' '||COALESCE(bbb.gauge_id,'')  else COALESCE(bbb.gauge_id,'') end as gauge_id, 
+COALESCE(aaa.product_name,'') as product_name, 
+COALESCE(aaa.product_qty,'0'), 
+COALESCE(aaa.uom,'') as uom, 
+COALESCE(aaa.sequence,'0') as sequence,
+COALESCE(aaa.service,'f') as service,
+COALESCE(aaa.partner_id,'0') as partner_id,
+COALESCE(aaa.index_col,'') as index_col
+
+from
+(select a.id,a.order_acceptance_ref_no as oa_ref, a.partner_id, b.name as partner_name, d.id as move_id, d.write_date, e.name as product_name, d.product_qty, f.name as uom, d.sequence, COALESCE(a.service,'f') as service, c.packing_id, 
+right(a.order_acceptance_ref_no,2) as index_col
+
+from sale_order a, res_partner b, stock_picking c, stock_move d, product_product e, product_uom f 
+where a.partner_id=b.id  and 
+a.id=c.sale_id and 
+c.id=d.picking_id and 
+d.product_id=e.id and 
+product_uom=f.id and 
+a.state in ('manual','progress','shipping_except','invoice_except') and 
+c.state in ('assigned','confirmed','waiting','done') and 
+d.state in ('assigned') and
+c.type='out')aaa
+left outer join
+(
+select aa.move_serial_lines, array_to_string(array_agg(case when COALESCE(bb.name,'NOT')='NOT' then '' else ''|| case when bb.state='assembled' then '' else 'NOT- ' end ||bb.name end  || case when COALESCE(cc.name,'NOT')='NOT' then '' else ','|| case when cc.state='assembled' then '' else 'NOT- ' end ||cc.name end || case when COALESCE(dd.name,'NOT')='NOT' then '' else ', '|| case when dd.state='assembled' then '' else 'NOT- ' end ||dd.name end),': ') as gauge_id from  
+
+(select move_serial_lines, product_serial01, product_serial02, product_serial03 from kts_mrp_product_serial_line ) aa
+left outer join
+(select name,state, id from kts_mrp_product_serial ) bb
+on aa.product_serial01=bb.id
+left outer join
+(select name,state, id from kts_mrp_product_serial ) cc
+on aa.product_serial02=cc.id
+left outer join
+(select name,state, id from kts_mrp_product_serial ) dd
+on aa.product_serial03=dd.id
+group by aa.move_serial_lines ) bbb
+on
+aaa.move_id=bbb.move_serial_lines

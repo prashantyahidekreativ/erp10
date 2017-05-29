@@ -1,0 +1,106 @@
+select 
+COALESCE(aaaa.location_id,'0') as location_id, 
+COALESCE(hhhh.stock_location) as stock_location,
+COALESCE(aaaa.product_id,'0') as product_id, 
+COALESCE(aaaa.uom_id,'0') as uom_id, 
+COALESCE(aaaa.prod_name,'') as prod_name, 
+COALESCE(aaaa.prod_uom,'') as prod_uom, 
+COALESCE( COALESCE(eeee.prod_incoming_qty_done,'0') - COALESCE(dddd.prod_outgoing_qty_done,'0'),'0') as prod_qty_done,
+COALESCE(aaaa.second_uom_id,COALESCE(aaaa.uom_id,'0')) as second_uom_id,
+COALESCE(bbbb.uop,COALESCE(aaaa.prod_uom,'')) as uop,
+COALESCE( COALESCE(eeee.prod_incoming_qty_done,'0') - COALESCE(dddd.prod_outgoing_qty_done,'0'),'0') * COALESCE(aaaa.uom_coeff,'1') as product_qty_done_uop,
+COALESCE(aaaa.domain,'') as domain, 
+COALESCE(aaaa.product_category_id,'0') as product_category_id, 
+COALESCE(aaaa.sales_type,'') as sales_type, 
+COALESCE(aaaa.product_group_id,'0') as product_group_id, 
+COALESCE(aaaa.pitch,'0') as pitch, 
+COALESCE(aaaa."TPI",'0') as "TPI",   
+COALESCE(aaaa.dia_mm,'0') as dia_mm, 
+COALESCE(aaaa.product_dia_convert_id,'0') as product_dia_convert_id, 
+COALESCE(aaaa.nominal_dia,'0') as nominal_dia,  
+COALESCE(aaaa.thread_direction,'') as thread_direction, 
+COALESCE(aaaa.product_tolerance_id,'0') as product_tolerance_id, 
+COALESCE(aaaa.srg,'f') as srg, 
+COALESCE(aaaa.gage_type,'') as gage_type, 
+COALESCE(aaab.product_group,'') as product_group, 
+COALESCE(aaab.pitch_format,'') as pitch_format, 
+COALESCE(aaac.product_tolerance,'') as product_tolerance, 
+COALESCE(aaab.dia_format,'') as dia_format,
+COALESCE(aaaa.stockable,'N') as stockable
+
+from
+(select aaa.location_id, aaa.product_id, ccc.uom_id, bbb.name as prod_name, ddd.name as prod_uom, ccc.domain, ccc.product_category_id, eee.sales_type, ccc.product_group_id, ccc.pitch,ccc."TPI",   ccc.dia_mm, ccc.product_dia_convert_id, ccc.nominal_dia,  ccc.thread_direction,ccc.product_tolerance_id,ccc.srg, eee.gage_type, ccc.second_uom_id, ccc.uom_coeff, case when ccc.procure_method='make_to_stock' then 'Y' else 'N' end as stockable from 
+
+(select distinct aa.location_id, aa.product_id from 
+
+( select a1.location_id, a1.product_id, COALESCE(a2.service,'f') as service from 
+  (select location_id, product_id, prodlot_id, picking_id, date from stock_move ) a1
+  left outer join 
+  (select id, service from stock_picking) a2
+  on a1.picking_id=a2.id
+  where date <= '2013-12-31' 
+  union 
+  select a1.location_id, a1.product_id, COALESCE(a2.service,'f') as service from 
+  (select location_dest_id as location_id, product_id, prodlot_id, picking_id, date from stock_move ) a1
+  left outer join 
+  (select id, service from stock_picking) a2
+  on a1.picking_id=a2.id
+  where date <= '2013-12-31' ) aa ) aaa, 
+product_product bbb, product_template ccc, product_uom ddd, product_category eee 
+where aaa.product_id=bbb.id and bbb.product_tmpl_id=ccc.id and ccc.uom_id=ddd.id and ccc.product_category_id=eee.id) aaaa
+
+left outer join
+
+(select id as uop_id, name as uop from product_uom) bbbb
+on aaaa.second_uom_id=bbbb.uop_id
+
+
+left outer join
+(
+select id, name as product_group, pitch_format, dia_format from product_group ) aaab
+on aaaa.product_group_id=aaab.id
+
+
+
+left outer join
+(
+select id, name as product_tolerance from product_tolerance ) aaac
+on aaaa.product_tolerance_id=aaac.id
+
+
+
+left outer join
+( 
+select a1.product_id, a1.location_sec_id, sum(a1.product_qty * a1.dfactor/a1.efactor) as prod_outgoing_qty_done, a1.uom_id  from
+(select a.product_id, a.location_id as location_sec_id, a.product_qty, d.factor as dfactor, e.factor as efactor, c.uom_id, a.picking_id
+from stock_move a, product_product b, product_template c, product_uom d, product_uom e 
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.date <= '2013-12-31' and a.product_uom=e.id) a1
+left outer join
+(select id, service from stock_picking) a2
+on a1.picking_id=a2.id
+group by a1.product_id, a1.location_sec_id, a1.uom_id
+) dddd
+on aaaa.product_id=dddd.product_id and aaaa.location_id=dddd.location_sec_id 
+
+
+left outer join
+(select a1.product_id, a1.location_sec_id, sum(a1.product_qty * a1.dfactor/a1.efactor) as prod_incoming_qty_done, a1.uom_id  from
+(select a.product_id, a.location_dest_id as location_sec_id, a.product_qty, d.factor as dfactor, e.factor as efactor, c.uom_id, a.picking_id
+from stock_move a, product_product b, product_template c, product_uom d, product_uom e 
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.date <= '2013-12-31' and a.product_uom=e.id) a1
+left outer join
+(select id, service from stock_picking) a2
+on a1.picking_id=a2.id
+group by a1.product_id, a1.location_sec_id, a1.uom_id
+) eeee
+on aaaa.product_id=eeee.product_id and aaaa.location_id=eeee.location_sec_id 
+
+inner join
+(select id,name as stock_location from stock_location where usage='internal') hhhh
+on  aaaa.location_id=hhhh.id

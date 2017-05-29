@@ -1,0 +1,28 @@
+select aaa.partner_id,
+aaa.partner_name, 
+aaa.state, 
+aaa.order_acceptance_ref_no, 
+aaa.date_confirm ,
+aaa.product_id, 
+aaa.product_name, 
+aaa.product_uom, 
+aaa.notes,
+aaa.unit_of_measure, 
+aaa.product_uom_qty, 
+aaa.delivery_date, 
+aaa.specification_id, 
+aaa.sales_type, 
+aaa.srg, 
+aaa.sequence,
+aaa.sale_order_line_id,
+aaa.service as service_flag
+from
+(select a.partner_id,c.name as partner_name, a.state,a.order_acceptance_ref_no, a.date_confirm ,b.product_id, d.name as product_name, b.product_uom, b.notes,e.name as unit_of_measure, b.product_uom_qty, b.delay as delivery_date, b.specification_id, f.sales_type, g.srg, b.sequence, b.id as sale_order_line_id, a.service
+from  sale_order a, sale_order_line b, res_partner c, product_product d, product_uom e, product_category f, product_template g
+where
+a.id=b.order_id and
+a.partner_id=c.id and
+b.product_id=d.id and
+b.product_uom=e.id and
+d.product_tmpl_id=g.id and
+g.product_category_id=f.id) aaa

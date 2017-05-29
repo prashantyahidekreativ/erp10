@@ -1,0 +1,116 @@
+select 
+COALESCE(min(i.id),'0') as id, 
+COALESCE(i.statement_id,'0') as statement_id, 
+COALESCE(i.journal_id,'0') as journal_id, 
+COALESCE(i.partner_id,'0') as partner_id,
+COALESCE(m.name,'') as name, 
+COALESCE(replace(array_to_string(array_agg(i.reconcile_partial_id),','),' ',''),'') as reconcile_partial_id, 
+COALESCE(sum(i.credit),'0') as credit, 
+COALESCE(sum(i.debit),'0') as debit, 
+COALESCE(i.ref,'') as ref, 
+COALESCE(i.account_id,'0') as account_id,
+COALESCE(i.move_id,'0') as move_id, 
+COALESCE(replace(array_to_string(array_agg(i.reconcile_id),','),' ',''),'') as reconcile_id, 
+COALESCE(i.reference,'') as reference, 
+COALESCE(i.move_journal_id,'0') as move_journal_id, 
+COALESCE(i.narration,'') as narration, 
+COALESCE(i.date,'2000-01-01') as date,
+COALESCE(i.move_partner_id,'0') as move_partner_id, 
+COALESCE(replace(replace(i.name,' Payable',''),' Receivable',''),'') as replace_text,
+COALESCE(array_to_string(array_agg(j.number),','),'') as number,
+COALESCE(array_to_string(array_agg(j.internal_number),','),'') as internal_number, 
+
+COALESCE(replace(array_to_string(array_agg(case when COALESCE(j.invoice_no_by_user,'0')='0' then j.number else j.invoice_no_by_user end),','),' ',''),'') as invoice_no_by_user,
+
+COALESCE(array_to_string(array_agg(k.number),','),'') as number, 
+COALESCE(array_to_string(array_agg(k.internal_number),','),'') as internal_number,
+
+COALESCE(replace(array_to_string(array_agg(case when COALESCE(k.invoice_no_by_user,'0')='0' then k.number else k.invoice_no_by_user end),','),' ',''),'') as invoice_no_by_user,
+
+COALESCE(l.name,'') as name,
+l.bank_stmt_note as bank_stmt_note,
+l.voucher_ref_by_user as voucher_ref_by_user, 
+n.voucher_no_by_user as voucher_no_by_user,
+COALESCE(n.number,'') as number, 
+COALESCE(p.date_trans,'2000-01-01') as date_trans, 
+COALESCE(max(p.carry_forward),'0') as carry_forward, 
+COALESCE(max(p.payment_total),'0') as payment_total, 
+COALESCE(max(p.receipt_total),'0') as receipt_total, 
+COALESCE(i.account_code,'') as account_code  
+from
+
+(
+select
+case when COALESCE(bb.id,'-1') =-1 then aa.id else bb.id end as id,
+case when COALESCE(bb.id,'-1') =-1 then aa.statement_id else bb.statement_id end as statement_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.journal_id else bb.journal_id end as journal_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.partner_id else bb.partner_id end as partner_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.reconcile_partial_id else bb.reconcile_partial_id end as reconcile_partial_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.debit else bb.credit end as credit,
+case when COALESCE(bb.id,'-1') =-1 then aa.credit else bb.debit end as debit,
+case when COALESCE(bb.id,'-1') =-1 then aa.ref else bb.ref end as ref,
+case when COALESCE(bb.id,'-1') =-1 then aa.account_id else bb.account_id end as account_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.move_id else bb.move_id end as move_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.reconcile_id else bb.reconcile_id end as reconcile_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.reference else bb.reference end as reference,
+case when COALESCE(bb.id,'-1') =-1 then aa.move_journal_id else bb.move_journal_id end as move_journal_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.narration else bb.narration end as narration,
+case when COALESCE(bb.id,'-1') =-1 then aa.date else bb.date end as date,
+case when COALESCE(bb.id,'-1') =-1 then aa.move_partner_id else bb.move_partner_id end as move_partner_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.name else bb.name end as name,
+case when COALESCE(bb.id,'-1') =-1 then aa.account_code else bb.account_code end as account_code
+
+from
+(
+select a.id as id, a.statement_id as statement_id, a.journal_id as journal_id, a.partner_id as partner_id, a.reconcile_partial_id as reconcile_partial_id, a.credit as credit, a.debit as debit, a.ref as ref, a.account_id as account_id,a.move_id as move_id, a.reconcile_id as reconcile_id, b.ref as reference, b.journal_id as move_journal_id, b.narration as narration, b.date as date,b.partner_id as  move_partner_id, c.name as name, c.code as account_code, d.type from  account_move b, account_account c, account_move_line a, account_journal d  where a.move_id=b.id and a.account_id = c.id and 
+b.date >= %s and b.date <= %s and a.account_id = %s and a.journal_id=d.id and b.state='posted') aa
+left join
+(select a.id as id, a.statement_id as statement_id, a.journal_id as journal_id, a.partner_id as partner_id, a.reconcile_partial_id as reconcile_partial_id, a.credit as credit, a.debit as debit, a.ref as ref, a.account_id as account_id,a.move_id as move_id, a.reconcile_id as reconcile_id, b.ref as reference, b.journal_id as move_journal_id, b.narration as narration, b.date as date,b.partner_id as  move_partner_id, c.name as name, c.code as account_code from account_move_line a, account_move b, account_account c, account_move_line d  where a.move_id=b.id and a.account_id = c.id and a.account_id!= %s and 
+b.date >= %s and b.date <= %s and a.move_id=d.move_id and d.account_id =%s
+order by b.date) bb
+on aa.move_id=bb.move_id and ((aa.statement_id=bb.statement_id ) or aa.type in ('bank','cash'))) as i 
+
+inner join
+(
+select d.date_trans as date_trans, sum(sum(d.balance)) over (order by d.date_trans) as carry_forward , sum(d.debit_total)  as payment_total, sum(d.credit_total)  as receipt_total from 
+(select COALESCE(sum(aa1.debit),'0') as debit_total, COALESCE(sum(aa1.credit),'0') as credit_total, aa1.date as date_trans, COALESCE(sum(aa1.debit),'0') - COALESCE(sum(aa1.credit),'0') as balance from 
+(
+select
+case when COALESCE(bb.id,'-1') =-1 then aa.move_id else bb.move_id end as move_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.debit else bb.credit end as debit,
+case when COALESCE(bb.id,'-1') =-1 then aa.credit else bb.debit end as credit,
+case when COALESCE(bb.date,'1900-01-01') ='1900-01-01' then aa.date else bb.date end as date
+from
+(select a.id as id, a.statement_id as statement_id, a.journal_id as journal_id, a.partner_id as partner_id, a.reconcile_partial_id as reconcile_partial_id, a.credit as credit, a.debit as debit, a.ref as ref, a.account_id as account_id,a.move_id as move_id, a.reconcile_id as reconcile_id, b.ref as reference, b.journal_id as move_journal_id, b.narration as narration, b.date as date,b.partner_id as  move_partner_id, c.name as name, c.code as account_code, d.type from  account_move b, account_account c, account_move_line a, account_journal d  where a.move_id=b.id and a.account_id = c.id and 
+a.account_id =%s and a.journal_id=d.id and b.state='posted') aa
+left join
+(select a.id as id, a.statement_id as statement_id, a.journal_id as journal_id, a.partner_id as partner_id, a.reconcile_partial_id as reconcile_partial_id, a.credit as credit, a.debit as debit, a.ref as ref, a.account_id as account_id,a.move_id as move_id, a.reconcile_id as reconcile_id, b.ref as reference, b.journal_id as move_journal_id, b.narration as narration, b.date as date,b.partner_id as  move_partner_id, c.name as name, c.code as account_code from account_move_line a, account_move b, account_account c, account_move_line d  where a.move_id=b.id and a.account_id = c.id and a.account_id!=%s and a.move_id=d.move_id and d.account_id =%s
+order by b.date) bb
+on aa.move_id=bb.move_id and ((aa.statement_id=bb.statement_id ) or aa.type in ('bank','cash'))
+) aa1
+group by date_trans
+) d  group by d.date_trans order by d.date_trans ) as p
+on i.date=p.date_trans
+
+
+left join 
+(select e.reconcile_id, array_to_string(array_agg(f.internal_number),',') as internal_number, array_to_string(array_agg(case when COALESCE(f.invoice_no_by_user,'0') = '0' then f.internal_number else replace(to_char(f.invoice_no_by_user,'99999'),' ','') end ),',')  as invoice_no_by_user, array_to_string(array_agg(f.number),',') as number  from account_move_line e, account_invoice f where e.move_id=f.move_id and e.reconcile_id is not null   group by e.reconcile_id  ) as j 
+on i.reconcile_id=j.reconcile_id
+
+
+left join 
+(select g.reconcile_partial_id, array_to_string(array_agg(h.internal_number),',') as internal_number, array_to_string(array_agg(case when COALESCE(h.invoice_no_by_user,'0') = '0' then h.internal_number else replace(to_char(h.invoice_no_by_user,'99999'),' ','') end ),',')  as invoice_no_by_user, array_to_string(array_agg(h.number),',') as number  from account_move_line g, account_invoice h  where g.move_id=h.move_id and g.reconcile_partial_id is not null group by g.reconcile_partial_id) as k on i.reconcile_partial_id=k.reconcile_partial_id
+
+
+left join account_bank_statement as l on i.statement_id=l.id
+
+left join res_partner as m on i.partner_id=m.id
+
+left join account_voucher as n on i.move_id=n.move_id
+
+group by
+i.statement_id, i.journal_id, i.partner_id,m.name, 
+i.ref, i.account_id,i.move_id, 
+i.reference, i.move_journal_id, i.narration, i.date,i.move_partner_id, i.name,  l.name,l.bank_stmt_note,l.voucher_ref_by_user, n.voucher_no_by_user,n.number, p.date_trans, 
+i.account_code
+order by i.date, id

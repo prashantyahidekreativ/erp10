@@ -1,0 +1,4 @@
+select a.number, b.name as partner_name, c.symbol as currency, a.total_amount, a.exchange_rate,c.name, a.type from account_invoice a, res_partner b, res_currency c
+where a.partner_id=b.id and
+a.currency_id=c.id and a.state in ('open','paid') and
+a.date_invoice >=%s and a.date_invoice <=%s

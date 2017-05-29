@@ -1,0 +1,94 @@
+select  
+COALESCE(prod_name,'') as prod_name, 
+COALESCE(OA_ref,'') as OA_ref, 
+COALESCE(partner_name,'') as partner_name,  
+COALESCE(prod_uom,'') as prod_uom, 
+COALESCE(total_prod_qty,'0') as total_prod_qty,
+COALESCE(product_picking_qty,'0') as product_picking_qty, 
+COALESCE(picking_uom,'') as picking_uom, 
+COALESCE(case when picking_status='assigned' then 'Ready for packing' when picking_status='confirmed' then 'Yet to be Allocated' else picking_status end, '') as picking_status, 
+COALESCE(picking_invoice_status,'') as picking_invoice_status,
+
+COALESCE(domain,'') as domain, 
+COALESCE(product_category_id,'0') as product_category_id, 
+COALESCE(sales_type,'') as sales_type, 
+COALESCE(product_group_id,'0') as product_group_id, 
+COALESCE(pitch,'0') as pitch, 
+COALESCE("TPI",'0') as tpi_value,   
+COALESCE(dia_mm,'0') as dia_mm, 
+COALESCE(product_dia_convert_id,'0') as product_dia_convert_id, 
+COALESCE(nominal_dia,'0') as nominal_dia,  
+COALESCE(thread_direction,'') as thread_direction, 
+COALESCE(product_tolerance_id,'0') as product_tolerance_id, 
+COALESCE(srg,'0') as srg, 
+COALESCE(gage_type,'') as gage_type, 
+COALESCE(product_group,'') as product_group, 
+COALESCE (pitch_format,'') as pitch_format, 
+COALESCE(product_tolerance,'') as product_tolerance,
+COALESCE(dia_format,'') as dia_format,
+
+COALESCE(date_confirm,'2000-01-01') as date_confirm , 
+COALESCE(delay,'0') as delay, 
+COALESCE(order_acceptance_ref,'') as order_acceptance_ref, 
+COALESCE(order_acceptance_ref_no_by_user,'0') as order_acceptance_ref_no_by_user, 
+COALESCE(partner_id,'0') as partner_id,
+COALESCE(aaaa.sequence,'0') as sequence,
+COALESCE(aaaa.service,'f') as service
+
+from 
+
+(select  aaa.prod_name,aaa.OA_ref, aaa.partner_name,  aaa.prod_uom, aaa.total_prod_qty,
+bbb.product_picking_qty, bbb.picking_uom, bbb.picking_status, bbb.picking_invoice_status,
+aaa.domain, aaa.product_category_id, aaa.sales_type, aaa.product_group_id, aaa.pitch, aaa."TPI",   aaa.dia_mm, aaa.product_dia_convert_id, aaa.nominal_dia,  aaa.thread_direction, aaa.product_tolerance_id, aaa.srg, aaa.gage_type, ccc.product_group, ccc.pitch_format, ddd.product_tolerance, aaa.date_confirm , aaa.delay, aaa.order_acceptance_ref,ccc.dia_format, aaa.order_acceptance_ref_no_by_user, aaa.partner_id, aaa.sequence, COALESCE(aaa.service,'f') as service
+from
+(
+
+select 
+a.id as sale_id, a.name as OA_ref, a.partner_id, i.name as partner_name, b.product_id, f.name as prod_name, b.product_uom, h.name as prod_uom, b.product_uom_qty * h.factor/c.factor  as total_prod_qty, d.domain, d.product_category_id, e.sales_type, d.product_group_id, d.pitch,d."TPI",   d.dia_mm, d.product_dia_convert_id, d.nominal_dia,  d.thread_direction,d.product_tolerance_id,d.srg, e.gage_type, a.date_confirm , round(b.delay::numeric,0)::numeric as delay, a.order_acceptance_ref_no as order_acceptance_ref, a.order_acceptance_ref_no_by_user, b.sequence, a.service
+from 
+sale_order a, sale_order_line b,product_uom c,  product_template d, 
+product_category e, product_product f, product_uom h, res_partner i
+where a.id=b.order_id and
+b.product_uom=c.id and
+b.product_id=f.id and
+f.product_tmpl_id=d.id and
+d.product_category_id=e.id and
+d.uom_id=h.id and
+a.partner_id=i.id and 
+a.state in ('manual','progress','shipping_except','invoice_except')
+)  aaa
+
+inner join
+(select 
+a.sale_id, 
+a.invoice_state as picking_invoice_status, 
+b.state as picking_status, 
+b.product_id, 
+b.product_uom, 
+c.name as picking_uom, 
+sum(b.product_qty * f.factor/c.factor ) as product_picking_qty, 
+b.sequence 
+from stock_picking a, stock_move b, product_uom c, product_product d, product_template e, product_uom f
+where a.id=b.picking_id and 
+b.product_uom=c.id and
+b.product_id=d.id and
+d.product_tmpl_id=e.id and
+e.uom_id=f.id and
+b.state in ('confirmed') and
+a.type='out'
+group by a.sale_id, a.invoice_state, b.state, b.sequence, b.product_id, b.product_uom, c.name ) bbb
+on
+aaa.sale_id=bbb.sale_id and aaa.product_id=bbb.product_id and aaa.sequence=bbb.sequence
+
+
+left outer join
+(
+select id, name as product_group, pitch_format, dia_format from product_group ) ccc
+on aaa.product_group_id=ccc.id
+
+left outer join
+(
+select id, name as product_tolerance from product_tolerance ) ddd
+on aaa.product_tolerance_id=ddd.id
+) aaaa
+

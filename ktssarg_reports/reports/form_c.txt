@@ -1,0 +1,14 @@
+select
+a.number,
+a.date_invoice,
+a.amount_untaxed,
+a.total_amount,
+b.name as fiscal_position,
+a.id as invoice_id
+from account_invoice a, account_fiscal_position b
+where partner_id=%s and
+date_invoice between %s and %s and
+a.fiscal_position=b.id and a.state in ('open','paid')
+and a.id not in ( select invoice_id from  kts_invoice_list where account_list_id =%s)
+and a.fiscal_position in (select id from account_fiscal_position where form_type=%s )
+order by  a.date_invoice desc

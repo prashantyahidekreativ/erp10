@@ -1,0 +1,93 @@
+select 
+COALESCE(aaa.product_name,''),
+COALESCE(aaa.movement_date,''),
+COALESCE(aaa.internal_moves,''), 
+COALESCE(aaa.source_location,''),
+COALESCE(aaa.production_lot,''),
+COALESCE(aaa.Prod_qty,'0'),  
+COALESCE(aaa.unit_of_measure,''),
+COALESCE(aaa.creator_user,''),
+COALESCE(aaa.approved_user,''),
+COALESCE(bbb.deivery_order,''), 
+COALESCE(bbb.sale_order,''), 
+COALESCE(bbb.product_qty,'0')
+from
+(select b.name as product_name,
+array_to_string(array_agg(to_char(f.date_done,'YYYY-MM-DD')),',') as movement_date,
+array_to_string(array_agg(f.name),',') as internal_moves, 
+array_to_string(array_agg(i.name),',') as source_location,
+g.name as production_lot,
+sum(a.product_qty * d.factor/e.factor) as Prod_qty,  
+d.name as unit_of_measure,
+array_to_string(array_agg(j.name),',') as creator_user,
+array_to_string(array_agg(k.name),',') as approved_user,
+a.product_id,
+a.prodlot_id
+from stock_picking f, 
+stock_move a, 
+product_product b, 
+product_template c, 
+product_uom d, 
+product_uom e, 
+stock_production_lot g,
+stock_location h,
+stock_location i,
+res_users j,
+res_users k
+where 
+f.id=a.picking_id and 
+f.state='done' and 
+a.state='done' and
+a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.product_uom=e.id and
+a.prodlot_id=g.id and
+a.location_dest_id=h.id and
+h.location_type='product_assembly' and
+i.id=a.location_id and
+j.id=f.create_uid and
+k.id=f.write_uid and
+f.date_done >= %s and
+f.date_done <= %s
+group by d.name, g.name, b.name, a.product_id, a.prodlot_id) aaa
+left join
+(select 
+aa.lot_id, 
+aa.product_id, 
+array_to_string(array_agg(aa.delivery_order),',') deivery_order, 
+array_to_string(array_agg(aa.sale_order),',') sale_order, 
+sum(aa.product_qty) as product_qty
+from
+(select  
+a.lot_id, 
+a.product_id,
+d.id,
+d.name as delivery_order,
+e.name as sale_order,
+count(lot_id) as product_qty
+from 
+kts_mrp_product_serial a, 
+kts_mrp_product_serial_line b,
+stock_move c,
+stock_picking d,
+sale_order e
+where 
+(a.id=product_serial01 or a.id=product_serial02 or a.id=product_serial03) and 
+a.state='assembled' and 
+b.move_serial_lines = c.id and
+c.picking_id = d.id and
+d.sale_id=e.id and
+d.state='done' and
+c.state='done' and
+d.date_done >= %s and
+d.date_done <= %s
+group by 
+a.lot_id, 
+a.product_id,
+d.id,
+e.name,
+d.name ) as aa 
+group by
+aa.lot_id, 
+aa.product_id ) as bbb on aaa.prodlot_id=bbb.lot_id and aaa.product_id=bbb.product_id

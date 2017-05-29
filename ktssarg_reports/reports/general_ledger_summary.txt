@@ -1,0 +1,59 @@
+select
+aaa.name,
+aaa.account_id, 
+COALESCE(aaa.credit_open,'0') as credit_open, 
+COALESCE(aaa.debit_open,'0') debit_open, 
+COALESCE(aaa.credit_close,'0') as credit_close, 
+COALESCE(aaa.debit_close,'0') as debit_close, 
+COALESCE(aaa.credit_transaction,'0') as credit_transaction, 
+COALESCE(aaa.debit_transaction,'0') as debit_transaction, 
+aaa.transaction_month, 
+aaa.journal_type, 
+COALESCE(aaa.report_option,'') as report_option  
+from
+(select 
+aa.name,
+aa.account_id, 
+COALESCE(bb.credit_open,'0') as credit_open, 
+COALESCE(bb.debit_open,'0') debit_open, 
+COALESCE(cc.credit_close,'0') as credit_close, 
+COALESCE(cc.debit_close,'0') as debit_close, 
+COALESCE(dd.credit_transaction,'0') as credit_transaction, 
+COALESCE(dd.debit_transaction,'0') as debit_transaction, 
+dd.transaction_month, 
+dd.journal_type, 
+COALESCE(aa.report_option,'') as report_option  from
+(select code||' '||name as name, id as account_id, report_option from account_account where report_option in ('summary','detailed')) aa
+left outer join
+(select sum(credit) as credit_open, sum(debit) debit_open, account_id from account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and a.date < %s group by account_id) bb
+on aa.account_id=bb.account_id
+left outer join
+(select sum(credit) as credit_close, sum(debit) debit_close, account_id from account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and a.date <= %s group by account_id) cc
+on aa.account_id=cc.account_id
+left outer join
+(select sum(credit) as credit_transaction, sum(debit) debit_transaction, account_id, (date_trunc('MONTH', to_timestamp(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) + INTERVAL '1 MONTH - 1 day')::date as transaction_month, c.type as journal_type from account_move_line a, account_move b, account_journal c where a.move_id=b.id and b.state='posted' and a.date >= %s and a.date <= %s and a.journal_id=c.id group by account_id, (date_trunc('MONTH', to_timestamp(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) + INTERVAL '1 MONTH - 1 day')::date, c.type) dd
+on aa.account_id=dd.account_id
+union
+select 
+aa.name,
+aa.account_id, 
+COALESCE(bb.credit_open,'0') as credit_open, 
+COALESCE(bb.debit_open,'0') debit_open, 
+COALESCE(cc.credit_close,'0') as credit_close, 
+COALESCE(cc.debit_close,'0') as debit_close, 
+COALESCE(dd.credit_transaction,'0') as credit_transaction, 
+COALESCE(dd.debit_transaction,'0') as debit_transaction, 
+dd.transaction_month, 
+dd.journal_type, 
+COALESCE(aa.report_option,'') as report_option  
+from
+(select a.code ||' '|| a.name as name, a.report_option as report_option, a.id as account_id  from account_account a where a.report_option='control_parent' ) aa
+left outer join
+(select sum(a.credit) as credit_open, sum(a.debit) debit_open, c.parent_id as account_id from account_move_line a, account_move b, account_account c where a.move_id=b.id and b.state='posted' and a.date < %s and a.account_id = c.id group by c.parent_id) bb
+on aa.account_id=bb.account_id
+left outer join
+(select sum(a.credit) as credit_close, sum(a.debit) debit_close, c.parent_id as account_id from account_move_line a, account_move b, account_account c where a.move_id=b.id and b.state='posted' and a.date <= %s and a.account_id=c.id group by c.parent_id) cc
+on aa.account_id=cc.account_id
+left outer join
+(select sum(a.credit) as credit_transaction, sum(a.debit) debit_transaction, d.parent_id as account_id, (date_trunc('MONTH', to_timestamp(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) + INTERVAL '1 MONTH - 1 day')::date as transaction_month, c.type as journal_type from account_move_line a, account_move b, account_journal c, account_account d where a.move_id=b.id and b.state='posted' and a.date >= %s and a.date <= %s and a.journal_id=c.id and a.account_id=d.id group by d.parent_id, (date_trunc('MONTH', to_timestamp(to_char(a.date,'YYYY-MM-DD'),'YYYY-MM-DD')) + INTERVAL '1 MONTH - 1 day')::date, c.type) dd
+on aa.account_id=dd.account_id ) aaa

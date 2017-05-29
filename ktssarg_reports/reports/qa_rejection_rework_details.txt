@@ -1,0 +1,79 @@
+select 
+a.major_specified_dia as major_specified_dia,
+a.major_reading_value as major_reading_value,
+b.pitch_specified_dia as pitch_specified_dia,
+b.pitch_reading_value as pitch_reading_value,
+c.minor_specified_dia as minor_specified_dia,
+c.minor_reading_value as minor_reading_value,
+d.pitch_error_specified_value as pitch_error_specified_value,
+d.pitch_error_reading_value as pitch_error_reading_value,
+e.flank_specified_dia as flank_specified_dia,
+e.flank_reading_value as flank_reading_value,
+f.result as result,
+f.write_date as checked_date,
+f.calibration_date as calibration_date,
+f.hardness as hardness,
+f.name as checked_by,
+g.name as gauge_id,
+h.sales_type as type,
+i.name as product_name,
+j.name as rejection_description
+from 
+(select 
+id,create_uid,data_id,specified_value as major_specified_dia,reading_value as major_reading_value
+from product_dimensions_data_line where name='Major Dia') a 
+
+inner join
+
+(select 
+data_id,specified_value as pitch_specified_dia,reading_value as pitch_reading_value 
+from product_dimensions_data_line where  name='Pitch Dia') b
+on a.data_id=b.data_id
+
+inner join 
+
+(select 
+data_id,specified_value as minor_specified_dia,reading_value as minor_reading_value
+from product_dimensions_data_line where name='Minor Dia' ) c
+on a.data_id=c.data_id
+
+inner join
+
+(select 
+data_id,specified_value as pitch_error_specified_value ,reading_value as pitch_error_reading_value
+from product_dimensions_data_line where name='Pitch' ) d
+on a.data_id=d.data_id
+
+inner join
+
+(select 
+data_id,specified_value as flank_specified_dia,reading_value as flank_reading_value
+from product_dimensions_data_line where name='Flank Ang') e
+on a.data_id=e.data_id
+
+inner join 
+
+(select a.id as id,a.write_date,a.result,a.calibration_date,a.create_uid,a.measured_product_dimensions_id,a.hardness,a.write_uid,a.rejection_id,b.id as user_id,b.name from product_measured_product_dimensions a, res_users b where a.write_uid=b.id ) f 
+on a.data_id=f.id
+
+inner join
+
+(select id,name,product_category_id,product from product_kts_measured_product_dimensions) g
+on f.measured_product_dimensions_id=g.id
+
+left outer join 
+
+(select id,create_uid,sales_type from product_category) h
+on g.product_category_id=h.id
+
+left outer join
+
+(select name,id from product_product) i
+on i.id=g.product
+
+left outer join
+(select id,name from qa_rejection_line) j
+on j.id=f.rejection_id
+
+where  f.calibration_date between %s and %s and f.result='rework' order by g.name
+; 

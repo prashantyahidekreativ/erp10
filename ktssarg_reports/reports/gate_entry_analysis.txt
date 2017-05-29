@@ -1,0 +1,9 @@
+select a.field1, a.field2 from
+
+(select gate_inward_no as field1, '1' as field2 from kts_gate_entry_management where process_sys_no is null and state in ('accept','done')
+
+union
+
+select name as field1, '2' as field2 from stock_picking where type='in' and state='done' and id not in (select process_sys_no from kts_gate_entry_management where state ='done') and date_done >= current_date - 5) a
+
+

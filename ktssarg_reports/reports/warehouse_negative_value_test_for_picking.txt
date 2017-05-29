@@ -1,0 +1,56 @@
+select 
+COALESCE(hhhh.stock_location) as stock_location,
+COALESCE(aaaa.prod_name,'') as prod_name, 
+COALESCE(aaaa.prod_uom,'') as prod_uom, 
+COALESCE( COALESCE(eeee.prod_incoming_qty_done,'0') - COALESCE(dddd.prod_outgoing_qty_done,'0') - COALESCE(iiii.prod_outgoing_qty_done,'0') ,'0') as prod_qty_done,
+COALESCE(jjjj.name,'') as prod_lot,
+COALESCE( COALESCE(eeee.prod_incoming_qty_done,'0') - COALESCE(dddd.prod_outgoing_qty_done,'0') ,'0') as available_qty,
+COALESCE(iiii.prod_outgoing_qty_done,'0')  as transaction_qty
+
+from
+(select aaa.location_id, aaa.product_id, ccc.uom_id, bbb.name as prod_name, ddd.name as prod_uom, prod_lot, fff.location_type, ccc.product_category_id from 
+(select distinct aa.location_id, aa.product_id, aa.prod_lot from 
+
+(select location_id, product_id, COALESCE(prodlot_id,'-1') as prod_lot from stock_move where picking_id = %s and id in %s union 
+select location_dest_id as location_id, product_id, COALESCE(prodlot_id,'-1') as prod_lot from stock_move where picking_id= %s and id in %s ) aa ,(select distinct location_id, product_id, COALESCE(prodlot_id,'-1') as prod_lot from stock_move where picking_id=%s and id in %s) ab where aa.location_id=ab.location_id and aa.product_id=ab.product_id and aa.prod_lot=ab.prod_lot ) aaa,
+product_product bbb, product_template ccc, product_uom ddd, product_category eee, stock_location fff 
+where aaa.product_id=bbb.id and bbb.product_tmpl_id=ccc.id and ccc.uom_id=ddd.id and ccc.product_category_id=eee.id and aaa.location_id=fff.id ) aaaa
+
+left outer join
+( select a.product_id, a.location_id as location_sec_id, sum(a.product_qty * d.factor/e.factor) as prod_outgoing_qty_done, c.uom_id, COALESCE(a.prodlot_id,'-1') as product_lot from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.product_uom=e.id 
+group by a.product_id, a.location_id, c.uom_id, a.prodlot_id ) dddd
+on aaaa.product_id=dddd.product_id and aaaa.location_id=dddd.location_sec_id and aaaa.prod_lot=dddd.product_lot
+
+left outer join
+( select a.product_id, a.location_dest_id, sum(a.product_qty * d.factor/e.factor) as prod_incoming_qty_done, c.uom_id, COALESCE(a.prodlot_id,'-1') as product_lot, max(a.id) as move_id from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.product_uom=e.id
+group by a.product_id, a.location_dest_id, c.uom_id, a.prodlot_id ) eeee
+on aaaa.product_id=eeee.product_id and aaaa.location_id=eeee.location_dest_id and aaaa.prod_lot=eeee.product_lot
+inner join
+(select id,name as stock_location from stock_location where usage='internal') hhhh
+on  aaaa.location_id=hhhh.id
+
+inner join
+( 
+select a.product_id, a.location_id as location_sec_id, sum(a.product_qty * d.factor/e.factor) as prod_outgoing_qty_done, c.uom_id, COALESCE(a.prodlot_id,'-1') as product_lot from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where 
+a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state not in ('cancel') and a.product_uom=e.id  and picking_id=%s and a.id in %s
+group by a.product_id, a.location_id, c.uom_id, a.prodlot_id ) iiii
+on aaaa.product_id=iiii.product_id and aaaa.location_id=iiii.location_sec_id and aaaa.prod_lot=iiii.product_lot
+
+left outer join
+( select id, name from stock_production_lot ) jjjj
+on aaaa.prod_lot=jjjj.id
+
+where
+COALESCE( COALESCE(eeee.prod_incoming_qty_done,'0') - COALESCE(dddd.prod_outgoing_qty_done,'0') - COALESCE(iiii.prod_outgoing_qty_done,'0') ,'0') < 0

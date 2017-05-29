@@ -1,0 +1,11 @@
+select coalesce(a.id,'0') as invoice_id, coalesce(a.date_invoice,'1900-01-01') as date_invoice, coalesce(a.number,'') as number, coalesce(a.invoice_no_by_user,'0') as invoice_no_by_user, coalesce(e.name,'') as partner_name, coalesce(b.tax_category,'') as tax_category, coalesce(c.base,'0') as base, coalesce(c.tax_amount,'0') as tax_amount, coalesce(d.name,'') as account_name, coalesce(f.name) as currency from account_invoice a, account_invoice_tax c, account_account d, res_partner e, res_currency f,
+(select invoice_id, tax_category, count(*) as tax_count from account_invoice_tax group by invoice_id, tax_category having count(*) > 1) b
+where a.id=b.invoice_id and
+b.invoice_id=c.invoice_id and
+b.tax_category = c.tax_category and
+c.account_id=d.id  and
+a.partner_id=e.id and
+a.currency_id=f.id and
+a.type='in_invoice' and a.state in ('paid','open')
+and a.date_invoice between %s and %s
+order by partner_name, a.id, account_name

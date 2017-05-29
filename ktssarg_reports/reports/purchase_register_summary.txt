@@ -1,0 +1,108 @@
+select '1' as rec_order, 'summary' as rec_type, COALESCE(a.name,'') as account_name, COALESCE(a.code,'') as account_code, COALESCE(sum(c.price_subtotal),'0') as amount_field, 0 as base_amount from account_account a, account_invoice b, account_invoice_line c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s
+group by a.name,a.code
+Union
+select '2' as rec_order,'freight' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code, COALESCE(sum(c.debit-c.credit),'0'), 0 as base_amount from account_account a, account_invoice b, account_move_line c
+where a.id=b.freight_account and
+b.move_id=c.move_id and
+b.freight_account=c.account_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s
+group by a.name,a.code
+union
+select '3' as rec_order,'packing' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code,  COALESCE(sum(c.debit-c.credit),'0'), 0 as base_amount from account_account a, account_invoice b, account_move_line c
+where a.id=b.packing_account and
+b.move_id=c.move_id and
+b.packing_account=c.account_id and
+b.packing_charges > 0 and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s
+group by a.name,a.code
+union
+select '94' as rec_order,'TDS' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code, COALESCE(sum(b.tds_amount),'0'), 0 as base_amount from account_account a, account_invoice b, account_ktstds c
+where a.id=c.tds_account and
+b.tds_account=c.id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s
+group by a.name,a.code
+union
+select '5' as rec_order,'ecess_on_cenvat' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code, COALESCE(sum(c.amount),'0') as tax_amount, COALESCE(sum(c.base),'0') as base_amount from account_account a, account_invoice b,account_invoice_tax c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='ecess_on_cenvat'
+group by a.name,a.code
+Union
+select '6' as rec_order,'hcess_on_cenvat' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code, COALESCE(sum(c.amount),'0') as tax_amount, COALESCE(sum(c.base),'0') as base_amount from account_account a, account_invoice b,account_invoice_tax c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='hcess_on_cenvat'
+group by a.name,a.code
+union
+select '4' as rec_order,'cenvat' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code, COALESCE(sum(c.amount),'0') as tax_amount, COALESCE(sum(c.base),'0') as base_amount from account_account a, account_invoice b,account_invoice_tax c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='cenvat'
+group by a.name,a.code
+union
+select '8' as rec_order,'hcess_on_service_tax' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code,COALESCE(sum(c.amount),'0') as tax_amount, COALESCE(sum(c.base),'0') as base_amount from account_account a, account_invoice b,account_invoice_tax c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='hcess_on_service_tax'
+group by a.name,a.code
+union
+select '9' as rec_order,'ecess_on_service_tax' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code, COALESCE(sum(c.amount),'0') as tax_amount, COALESCE(sum(c.base),'0') as base_amount from account_account a, account_invoice b,account_invoice_tax c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='ecess_on_service_tax'
+group by a.name,a.code
+union
+select '91' as rec_order,'service_tax' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code, COALESCE(sum(c.amount),'0') as tax_amount, COALESCE(sum(c.base),'0') as base_amount from account_account a, account_invoice b, account_invoice_tax c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='service_tax'
+group by a.name,a.code
+union
+select '92' as rec_order,'mvat' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code, COALESCE(sum(c.amount),'0') as tax_amount, COALESCE(sum(c.base),'0') as base_amount from account_account a, account_invoice b,account_invoice_tax c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='mvat'
+group by a.name,a.code
+union
+select '93' as rec_order,'mvat' as rec_type, COALESCE(a.name,''), COALESCE(a.code,'') as account_code, COALESCE(sum(c.amount),'0') as tax_amount, COALESCE(sum(c.base),'0') as base_amount from account_account a, account_invoice b,account_invoice_tax c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='cst'
+group by a.name,a.code
+union
+select '95' as rec_order,'no_tax' as rec_type, COALESCE(a.name,''), '' as account_code,COALESCE(sum(b.amount_total),'0'), 0 as base_amt from account_fiscal_position a, account_invoice b
+where a.id=b.fiscal_position and
+a.tax_type='no_tax' and
+b.type='in_invoice' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s
+group by a.name
+order by 1,2,3;
+	

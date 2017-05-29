@@ -1,0 +1,54 @@
+select 
+'92' as rec_order,
+'mvat' as rec_type, 
+COALESCE(a.name,''), 
+COALESCE(a.code,'') as account_code, 
+COALESCE(sum(c.amount),'0') as tax_amount, 
+COALESCE(sum(c.base),'0') as base_amount,
+0 as freight
+from account_account a, account_invoice b,account_invoice_tax c 
+where a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_refund' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='mvat'
+group by a.name,a.code
+
+union
+
+select 
+'93' as rec_order,
+'cst' as rec_type, 
+COALESCE(a.name,''), 
+COALESCE(a.code,'') as account_code, 
+COALESCE(sum(c.amount),'0') as tax_amount, 
+COALESCE(sum(c.base),'0') as base_amount,
+0 as freight
+from account_account a, account_invoice b,account_invoice_tax c 
+where 
+a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_refund' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='cst'
+group by a.name,a.code
+
+union
+
+select 
+'94' as rec_order,
+'cst' as rec_type, 
+COALESCE(a.name,''), 
+COALESCE(a.code,'') as account_code, 
+COALESCE(sum(c.amount),'0') as tax_amount, 
+COALESCE(sum(c.base),'0') as base_amount,
+0 as freight
+from account_account a, account_invoice b,account_invoice_tax c 
+where 
+a.id=c.account_id and
+b.id=c.invoice_id and
+b.type='in_refund' and 
+b.state in ('paid','open') and 
+b.date_invoice between %s and %s and c.tax_category ='service_tax'
+group by a.name,a.code
+order by 1,2,3

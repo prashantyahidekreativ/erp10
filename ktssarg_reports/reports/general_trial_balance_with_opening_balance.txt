@@ -1,0 +1,74 @@
+select 
+COALESCE(k.name,'') as name, 
+COALESCE(k.code,'') as code, 
+case when (COALESCE(k.debit_open,'0.0') - COALESCE(k.credit_open,'0.0')) >=0  then (COALESCE(k.debit_open,'0.0') - COALESCE(k.credit_open,'0.0')) else 0.0 end as debit_open, 
+case when (COALESCE(k.debit_open,'0.0') - COALESCE(k.credit_open,'0.0')) >=0  then 0.0 else (COALESCE(k.credit_open,'0.0') - COALESCE(k.debit_open,'0.0')) end as credit_open,
+COALESCE(k.debit_transaction,'0.0') as debit_transaction,
+COALESCE(k.credit_transaction,'0.0') as credit_transaction,
+case when (COALESCE(k.debit_close,'0.0') - COALESCE(k.credit_close,'0.0')) >=0  then (COALESCE(k.debit_close,'0.0') - COALESCE(k.credit_close,'0.0')) else 0.0 end as debit_close, 
+case when (COALESCE(k.debit_close,'0.0') - COALESCE(k.credit_close,'0.0')) >=0  then 0.0 else (COALESCE(k.credit_close,'0.0') - COALESCE(k.debit_close,'0.0')) end as credit_close
+from
+(Select 
+COALESCE(i.name,'') as name, 
+COALESCE(i.code,'') as code, 
+COALESCE(i.type,'') as type, 
+COALESCE(d.debit_open,'0.0') as debit_open, 
+COALESCE(d.credit_open,'0.0') as credit_open,
+COALESCE(e.debit_transaction,'0.0') as debit_transaction,
+COALESCE(e.credit_transaction,'0.0') as credit_transaction,
+COALESCE(f.debit_close,'0.0') as debit_close,
+COALESCE(f.credit_close,'0.0') as credit_close
+from 
+(select b.id,b.name as name,b.code , b.type
+from account_account b
+where
+b.type in ('other','liquidity') )  as i
+left outer join 
+(select COALESCE(sum(a.debit),'0') as debit_open, COALESCE(sum(a.credit),'0') as credit_open, a.account_id as account_id from 
+account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and b.date < %s group by a.account_id) as d 
+on i.id=d.account_id
+left outer join 
+(select COALESCE(sum(a.debit),'0') as debit_transaction, COALESCE(sum(a.credit),'0') as credit_transaction, a.account_id as account_id from 
+account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and b.date >= %s and b.date <= %s group by a.account_id) as e
+on i.id=e.account_id
+left outer join 
+(select COALESCE(sum(a.debit),'0') as debit_close, COALESCE(sum(a.credit),'0') as credit_close, a.account_id as account_id from 
+account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and b.date<=%s group by a.account_id) as f
+on i.id=f.account_id
+union
+Select 
+COALESCE(i.parent_name,'') as name, 
+COALESCE(i.parent_code,'') as code, 
+COALESCE(i.type,'') as type,
+COALESCE(sum(d.debit_open),'0.0') as debit_open, 
+COALESCE(sum(d.credit_open),'0.0') as credit_open,
+COALESCE(sum(e.debit_transaction),'0.0') as debit_transaction, 
+COALESCE(sum(e.credit_transaction),'0.0') as credit_transaction,
+COALESCE(sum(f.debit_close),'0.0') as debit_close, 
+COALESCE(sum(f.credit_close),'0.0') as credit_close
+from
+(select b.id,b.name,b.code, b.parent_id,
+c.name as parent_name,c.code as parent_code, b.type
+from account_account b, account_account c
+where
+b.parent_id=c.id and
+b.type in ('payable','receivable'))  as i
+left outer join 
+(select COALESCE(sum(a.debit),'0') as debit_open, COALESCE(sum(a.credit),'0') as credit_open, a.account_id as account_id from 
+account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and b.date < %s group by a.account_id) as d 
+on i.id=d.account_id
+left outer join 
+(select COALESCE(sum(a.debit),'0') as debit_transaction, COALESCE(sum(a.credit),'0') as credit_transaction, a.account_id as account_id from 
+account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and b.date >= %s and b.date <=%s group by a.account_id) as e
+on i.id=e.account_id
+left outer join 
+(select COALESCE(sum(a.debit),'0') as debit_close, COALESCE(sum(a.credit),'0') as credit_close, a.account_id as account_id from 
+account_move_line a, account_move b where a.move_id=b.id  and b.state='posted' and b.date<= %s group by a.account_id) as f
+on i.id=f.account_id
+group by 
+i.parent_name,
+i.parent_code,
+i.type) k
+where
+(COALESCE(k.debit_open,'0.0') + COALESCE(k.credit_open,'0.0') + COALESCE(k.debit_transaction,'0.0') + COALESCE(k.credit_transaction,'0.0') + COALESCE(k.debit_close,'0.0') + COALESCE(k.credit_close,'0.0') ) > 0
+Order by k.code

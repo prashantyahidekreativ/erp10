@@ -1,0 +1,93 @@
+select min(i.id) as id, 
+i.statement_id, i.journal_id, i.partner_id,m.name, 
+replace(array_to_string(array_agg(to_char(i.reconcile_partial_id,'999999')),','),' ','') as reconcile_partial_id, 
+sum(i.credit) as credit, sum(i.debit) as debit, 
+i.ref, i.account_id,i.move_id, 
+replace(array_to_string(array_agg(to_char(i.reconcile_id,'999999')),','),' ','') as reconcile_id, 
+i.reference, i.move_journal_id, i.narration, i.date,i.move_partner_id, replace(replace(i.name,' Payable',''),' Receivable',''), 
+array_to_string(array_agg(j.number),',') as number,
+array_to_string(array_agg(j.internal_number),',') as internal_number, 
+replace(array_to_string(array_agg(to_char(j.invoice_no_by_user,'999999')),','),' ','') as invoice_no_by_user,
+array_to_string(array_agg(k.number),',') as number, 
+array_to_string(array_agg(k.internal_number),',') as internal_number,
+replace(array_to_string(array_agg(to_char(k.invoice_no_by_user,'999999')),','),' ','') as invoice_number_by_user,
+l.name,l.bank_stmt_note,l.voucher_ref_by_user, n.voucher_no_by_user,n.number, p.date_trans, 
+max(p.carry_forward) as carry_forward, max(p.payment_total) as payment_total, max(p.receipt_total) as receipt_total, i.account_code,
+max(z.amount_currency) as amount_currency,
+q.name as currency,
+max(p.carry_forward_amount_currency) as carry_forward_amount_currency,
+max(p.transaction_sum_amount) as transaction_sum_amount
+from
+(select
+case when COALESCE(bb.id,'-1') =-1 then aa.id else bb.id end as id,
+case when COALESCE(bb.id,'-1') =-1 then aa.statement_id else bb.statement_id end as statement_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.journal_id else bb.journal_id end as journal_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.partner_id else bb.partner_id end as partner_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.reconcile_partial_id else bb.reconcile_partial_id end as reconcile_partial_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.debit else bb.credit end as credit,
+case when COALESCE(bb.id,'-1') =-1 then aa.credit else bb.debit end as debit,
+case when COALESCE(bb.id,'-1') =-1 then aa.ref else bb.ref end as ref,
+case when COALESCE(bb.id,'-1') =-1 then aa.account_id else bb.account_id end as account_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.move_id else bb.move_id end as move_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.reconcile_id else bb.reconcile_id end as reconcile_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.reference else bb.reference end as reference,
+case when COALESCE(bb.id,'-1') =-1 then aa.move_journal_id else bb.move_journal_id end as move_journal_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.narration else bb.narration end as narration,
+case when COALESCE(bb.id,'-1') =-1 then aa.date else bb.date end as date,
+case when COALESCE(bb.id,'-1') =-1 then aa.move_partner_id else bb.move_partner_id end as move_partner_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.name else bb.name end as name,
+case when COALESCE(bb.id,'-1') =-1 then aa.account_code else bb.account_code end as account_code,
+case when COALESCE(bb.id,'-1') =-1 then aa.currency_id else aa.currency_id end as currency_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.amount_currency else aa.amount_currency end as amount_currency
+from
+(select a.id as id, a.statement_id as statement_id, a.journal_id as journal_id, a.partner_id as partner_id, a.reconcile_partial_id as reconcile_partial_id, a.credit as credit, a.debit as debit, a.ref as ref, a.account_id as account_id,a.move_id as move_id, a.reconcile_id as reconcile_id, b.ref as reference, b.journal_id as move_journal_id, b.narration as narration, b.date as date,b.partner_id as  move_partner_id, c.name as name, c.code as account_code, d.type,  a.currency_id, a.amount_currency from  account_move b, account_account c, account_move_line a, account_journal d  where a.move_id=b.id and a.account_id = c.id and 
+b.date >= %s and b.date <=%s  and a.account_id =%s and a.journal_id=d.id and b.state='posted') aa
+left join
+(select a.id as id, a.statement_id as statement_id, a.journal_id as journal_id, a.partner_id as partner_id, a.reconcile_partial_id as reconcile_partial_id, a.credit as credit, a.debit as debit, a.ref as ref, a.account_id as account_id,a.move_id as move_id, a.reconcile_id as reconcile_id, b.ref as reference, b.journal_id as move_journal_id, b.narration as narration, b.date as date,b.partner_id as  move_partner_id, c.name as name, c.code as account_code, a.currency_id, a.amount_currency from account_move_line a, account_move b, account_account c, account_move_line d  where a.move_id=b.id and a.account_id = c.id and a.account_id!=%s and 
+b.date >= %s and b.date <=%s  and a.move_id=d.move_id and d.account_id =%s
+order by b.date) bb
+on aa.move_id=bb.move_id and ((aa.statement_id=bb.statement_id ) or aa.type in ('bank','cash'))) as i 
+inner join
+(select d.date_trans as date_trans, sum(sum(d.balance)) over (order by d.date_trans) as carry_forward , sum(d.debit_total)  as payment_total, sum(d.credit_total)  as receipt_total, sum(sum(d.amount_currency)) over (order by d.date_trans) as carry_forward_amount_currency, sum(d.amount_currency) as transaction_sum_amount from 
+(select COALESCE(sum(aa1.debit),'0') as debit_total, COALESCE(sum(aa1.credit),'0') as credit_total, aa1.date as date_trans, COALESCE(sum(aa1.debit),'0') - COALESCE(sum(aa1.credit),'0') as balance, COALESCE(max(aa1.amount_currency),'0') as amount_currency 
+from 
+(select
+case when COALESCE(bb.id,'-1') =-1 then aa.move_id else bb.move_id end as move_id,
+case when COALESCE(bb.id,'-1') =-1 then aa.debit else bb.credit end as debit,
+case when COALESCE(bb.id,'-1') =-1 then aa.credit else bb.debit end as credit,
+case when COALESCE(bb.date,'1900-01-01') ='1900-01-01' then aa.date else bb.date end as date,
+COALESCE(aa2.amount_currency,'0') as amount_currency
+from
+(select a.id as id, a.statement_id as statement_id, a.journal_id as journal_id, a.partner_id as partner_id, a.reconcile_partial_id as reconcile_partial_id, a.credit as credit, a.debit as debit, a.ref as ref, a.account_id as account_id,a.move_id as move_id, a.reconcile_id as reconcile_id, b.ref as reference, b.journal_id as move_journal_id, b.narration as narration, b.date as date,b.partner_id as  move_partner_id, c.name as name, c.code as account_code, d.type, a.amount_currency from  account_move b, account_account c, account_move_line a, account_journal d  where a.move_id=b.id and a.account_id = c.id and a.account_id =%s and a.journal_id=d.id and b.state='posted') aa
+inner join
+(select b.date as date,sum(a.amount_currency) as amount_currency from  account_move b, account_account c, account_move_line a, account_journal d  where a.move_id=b.id and a.account_id = c.id and a.account_id =%s and a.journal_id=d.id and b.state='posted' group by b.date) as aa2
+on
+aa.date=aa2.date
+left join
+(select a.id as id, a.statement_id as statement_id, a.journal_id as journal_id, a.partner_id as partner_id, a.reconcile_partial_id as reconcile_partial_id, a.credit as credit, a.debit as debit, a.ref as ref, a.account_id as account_id,a.move_id as move_id, a.reconcile_id as reconcile_id, b.ref as reference, b.journal_id as move_journal_id, b.narration as narration, b.date as date,b.partner_id as  move_partner_id, c.name as name, c.code as account_code,a.amount_currency from account_move_line a, account_move b, account_account c, account_move_line d  where a.move_id=b.id and a.account_id = c.id and a.account_id!=%s and 
+ a.move_id=d.move_id and d.account_id =%s
+order by b.date) bb
+on aa.move_id=bb.move_id and ((aa.statement_id=bb.statement_id ) or aa.type in ('bank','cash'))
+) as aa1
+group by date_trans) d  
+group by d.date_trans order by d.date_trans ) as p
+on i.date=p.date_trans
+inner join
+(select sum(d.amount_currency) as amount_currency, d.move_id from 
+(select COALESCE(sum(a.debit),'0') as debit_total, COALESCE(sum(a.credit),'0') as credit_total, a.move_id as move_id, COALESCE(sum(a.debit),'0') - COALESCE(sum(a.credit),'0') as balance, COALESCE(sum(a.amount_currency),'0') as amount_currency from account_move_line a, account_move b  
+where a.move_id=b.id and a.account_id = %s  group by a.move_id) d  group by d.move_id order by d.move_id ) as z
+on i.move_id=z.move_id
+left join 
+(select e.id, e.move_id, e.reconcile_id,f.number,f.internal_number, f.invoice_no_by_user  from account_move_line e, account_invoice f where e.move_id=f.move_id and e.reconcile_id is not null  ) as j 
+on i.reconcile_id=j.reconcile_id
+left join (select g.id, g.move_id, g.reconcile_partial_id,h.number,h.internal_number, h.invoice_no_by_user  from account_move_line g, account_invoice h  where g.move_id=h.move_id and g.reconcile_partial_id is not null) as k on i.reconcile_partial_id=k.reconcile_partial_id
+left join account_bank_statement as l on i.statement_id=l.id
+left join res_partner as m on i.partner_id=m.id
+left join account_voucher as n on i.move_id=n.move_id
+left join res_currency as  q on i.currency_id=q.id
+group by
+i.statement_id, i.journal_id, i.partner_id,m.name, 
+i.ref, i.account_id,i.move_id, 
+i.reference, i.move_journal_id, i.narration, i.date,i.move_partner_id, i.name,  l.name,l.bank_stmt_note,l.voucher_ref_by_user, n.voucher_no_by_user,n.number, p.date_trans, 
+i.account_code,q.name
+order by i.date, i.move_id

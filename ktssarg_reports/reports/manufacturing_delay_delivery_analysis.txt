@@ -1,0 +1,41 @@
+select 
+distinct 
+COALESCE(aa.sale_order,'') as sale_order, 
+
+COALESCE(aa.order_acceptance_ref_no,'') 
+as order_acceptance_ref_no, 
+
+COALESCE(aa.product,'') as product, 
+
+COALESCE(aa.delay,'0') as delay, 
+
+COALESCE(aa.customer_name,'') as customer_name, 
+
+COALESCE(aa.date_confirm,'2000-01-01') as date_confirm,
+COALESCE(aa.state,'') as state
+from
+
+
+(select a.name as sale_order, a.order_acceptance_ref_no,a.date_confirm, c.name as product,  (current_date - a.date_confirm) - delay as delay, f.name as customer_name, e.state  
+
+from  sale_order a, sale_order_line b, product_product c, stock_picking d, stock_move e, res_partner f
+
+ where
+ a.id=b.order_id and 
+
+b.product_id=c.id and
+
+ a.id=d.sale_id and
+
+d.id=e.picking_id and 
+
+b.product_id=e.product_id and 
+
+b.sequence=e.sequence and
+
+a.partner_id=f.id and 
+
+d.type='out' and 
+e.state not in ('done','cancel','draft','assigned') and
+
+(current_date - a.date_confirm) - delay > 0 ) aa

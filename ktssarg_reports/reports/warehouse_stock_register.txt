@@ -1,0 +1,213 @@
+select 
+COALESCE(aaaaa.location_id,'0') as location_id, 
+COALESCE(aaaaa.product_id,'0') as product_id, 
+COALESCE(aaaaa.uom_id,'0') as uom_id, 
+COALESCE(aaaaa.location_name) as location_name, 
+COALESCE(aaaaa.prod_name,'') as prod_name, 
+COALESCE(aaaaa.prod_uom,'') as prod_uom, 
+COALESCE(aaaaa.prod_qty_done_close,'0') as prod_qty_done_close,
+COALESCE(aaaaa.prod_qty_done_open,'0') as prod_qty_done_open,
+COALESCE(aaaaa.date,to_date('2000-01-01','yyyy-mm-dd')) as date, 
+'0' as prod_qty_day_cum_bal, 
+COALESCE(aaaaa.prod_outgoing_qty_done,'0') as prod_outgoing_qty_done,
+COALESCE(aaaaa.prod_incoming_qty_done,'0') as prod_incoming_qty_done,
+COALESCE(aaaaa.origin,'') as origin,
+COALESCE(aaaaa.domain,'') as domain, 
+COALESCE(aaaaa.product_category_id,'0') as product_category_id, 
+COALESCE(aaaaa.sales_type,'') as sales_type, 
+COALESCE(aaaaa.product_group_id,'0') as product_group_id, 
+COALESCE(aaaaa.pitch,'0') as pitch, 
+COALESCE(aaaaa."TPI",'0') as "TPI",   
+COALESCE(aaaaa.dia_mm,'0') as dia_mm, 
+COALESCE(aaaaa.product_dia_convert_id,'0') as product_dia_convert_id, 
+COALESCE(aaaaa.nominal_dia,'0') as nominal_dia,  
+COALESCE(aaaaa.thread_direction,'') as thread_direction, 
+COALESCE(aaaaa.product_tolerance_id,'0') as product_tolerance_id, 
+COALESCE(aaaaa.srg,'f') as srg, 
+COALESCE(aaaaa.gage_type,'') as gage_type, 
+COALESCE(aaaaa.product_group,'') as product_group, 
+COALESCE(aaaaa.pitch_format,'') as pitch_format, 
+COALESCE(aaaaa.product_tolerance,'') as product_tolerance, 
+COALESCE(aaaaa.dia_format,'') as dia_format
+
+from
+(select 
+COALESCE(aaaa.location_id,'0') as location_id, 
+COALESCE(aaaa.product_id,'0') as product_id, 
+COALESCE(aaaa.uom_id,'0') as uom_id, 
+COALESCE(bbbb.location_name) as location_name, 
+COALESCE(aaaa.prod_name,'') as prod_name, 
+COALESCE(aaaa.prod_uom,'') as prod_uom, 
+
+COALESCE( COALESCE(eeee.prod_incoming_qty_done,'0') - COALESCE(dddd.prod_outgoing_qty_done,'0'),'0') as prod_qty_done_close,
+
+COALESCE( COALESCE(gggg.prod_incoming_qty_done,'0') - COALESCE(ffff.prod_outgoing_qty_done,'0'),'0') as prod_qty_done_open,
+
+COALESCE(hhhh.date,to_date('2000-01-01','yyyy-mm-dd')) as date, 
+'0' as prod_qty_day_cum_bal, 
+COALESCE(hhhh.prod_outgoing_qty_done,'0') as prod_outgoing_qty_done,
+COALESCE(hhhh.prod_incoming_qty_done,'0') as prod_incoming_qty_done,
+COALESCE(hhhh.origin,'') as origin,
+COALESCE(aaaa.domain,'') as domain, 
+COALESCE(aaaa.product_category_id,'0') as product_category_id, 
+COALESCE(aaaa.sales_type,'') as sales_type, 
+COALESCE(aaaa.product_group_id,'0') as product_group_id, 
+COALESCE(aaaa.pitch,'0') as pitch, 
+COALESCE(aaaa."TPI",'0') as "TPI",   
+COALESCE(aaaa.dia_mm,'0') as dia_mm, 
+COALESCE(aaaa.product_dia_convert_id,'0') as product_dia_convert_id, 
+COALESCE(aaaa.nominal_dia,'0') as nominal_dia,  
+COALESCE(aaaa.thread_direction,'') as thread_direction, 
+COALESCE(aaaa.product_tolerance_id,'0') as product_tolerance_id, 
+COALESCE(aaaa.srg,'f') as srg, 
+COALESCE(aaaa.gage_type,'') as gage_type, 
+COALESCE(aaab.product_group,'') as product_group, 
+COALESCE(aaab.pitch_format,'') as pitch_format, 
+COALESCE(aaac.product_tolerance,'') as product_tolerance, 
+COALESCE(aaab.dia_format,'') as dia_format
+
+ 
+
+from
+(select aaa.location_id, aaa.product_id, ccc.uom_id, bbb.name as prod_name, ddd.name as prod_uom, ccc.domain, ccc.product_category_id, eee.sales_type, ccc.product_group_id, ccc.pitch,ccc."TPI",   ccc.dia_mm, ccc.product_dia_convert_id, ccc.nominal_dia,  ccc.thread_direction,ccc.product_tolerance_id,ccc.srg, eee.gage_type from 
+
+(select distinct aa.location_id, aa.product_id from (select location_id, product_id , sequence from stock_move where date <= %s and state='done' union select location_dest_id as location_id, product_id, sequence from stock_move where date <= %s and state='done') aa ) aaa, product_product bbb, product_template ccc, product_uom ddd, product_category eee where aaa.product_id=bbb.id and bbb.product_tmpl_id=ccc.id and ccc.uom_id=ddd.id and ccc.product_category_id=eee.id ) aaaa
+
+inner join 
+(select id, name as location_name from stock_location where usage='internal') bbbb
+on aaaa.location_id= bbbb.id
+
+left outer join
+(
+select id, name as product_group, pitch_format, dia_format from product_group ) aaab
+on aaaa.product_group_id=aaab.id
+
+left outer join
+(
+select id, name as product_tolerance from product_tolerance ) aaac
+on aaaa.product_tolerance_id=aaac.id
+
+left outer join
+( 
+select a.product_id, a.location_id as location_sec_id, sum(a.product_qty * d.factor/e.factor) as prod_outgoing_qty_done, c.uom_id from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.date <= %s and a.product_uom=e.id
+group by a.product_id, a.location_id, c.uom_id ) dddd
+on aaaa.product_id=dddd.product_id and aaaa.location_id=dddd.location_sec_id
+
+left outer join
+( select a.product_id, a.location_dest_id, sum(a.product_qty * d.factor/e.factor) as prod_incoming_qty_done, c.uom_id from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.date <= %s and a.product_uom=e.id
+group by a.product_id, a.location_dest_id, c.uom_id ) eeee
+on aaaa.product_id=eeee.product_id and aaaa.location_id=eeee.location_dest_id
+
+left outer join
+( select a.product_id, a.location_id as location_sec_id, sum(a.product_qty * d.factor/e.factor) as prod_outgoing_qty_done, c.uom_id from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.date <= %s and a.product_uom=e.id
+group by a.product_id, a.location_id, c.uom_id ) ffff
+on aaaa.product_id=ffff.product_id and aaaa.location_id=ffff.location_sec_id
+
+left outer join
+( select a.product_id, a.location_dest_id, sum(a.product_qty * d.factor/e.factor) as prod_incoming_qty_done, c.uom_id from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.date <= %s and a.product_uom=e.id
+group by a.product_id, a.location_dest_id, c.uom_id ) gggg
+on aaaa.product_id=gggg.product_id and aaaa.location_id=gggg.location_dest_id
+
+
+left outer join
+(
+select aaa.location_id as location_sec_id, 
+aaa.product_id,
+aaa.date, 
+'0' as prod_qty_day_cum_bal, 
+aaa.prod_outgoing_qty_done,
+aaa.prod_incoming_qty_done,
+aaa.origin
+from
+
+(select a.id,
+a.product_id, 
+a.location_id, 
+to_date(to_char(a.date, 'YYYY/MM/DD'), 'YYYY/MM/DD') as date, 
+a.product_qty * d.factor/e.factor as prod_outgoing_qty_done, 
+'0' as prod_incoming_qty_done, 
+c.uom_id, 
+'To ' ||f.name || ' '|| case when a.picking_id is null then COALESCE(a.name,'') when k.name is not null then COALESCE(COALESCE(j.name,' ')||' '|| COALESCE(k.name,' ')||' '|| COALESCE(l.name,' ')||COALESCE(m.name,' '),' ') else COALESCE(COALESCE(j.name,' ')|| ' '|| COALESCE(l.name,' ')||COALESCE(m.name,' '),' ') end as origin from 
+stock_move a
+inner join
+product_product b on a.product_id=b.id
+inner join 
+product_template c on b.product_tmpl_id=c.id
+inner join
+product_uom d on c.uom_id=d.id
+inner join
+product_uom e on a.product_uom=e.id
+inner join
+stock_location f on a.location_dest_id=f.id
+left outer join
+stock_picking j
+on a.picking_id=j.id
+left outer join
+res_partner k
+on j.partner_id=k.id
+left outer join 
+sale_order l
+on j.sale_id=l.id
+left outer join
+purchase_order m
+on j.purchase_id=m.id
+where  
+a.state in ('done') and a.date <= %s and a.date >= %s
+union
+select a.id,
+a.product_id, 
+a.location_dest_id as loaction_id, 
+to_date(to_char(a.date, 'YYYY/MM/DD'), 'YYYY/MM/DD') as date,
+'0' as prod_outgoing_qty_done, 
+a.product_qty * d.factor/e.factor as prod_incoming_qty_done, 
+c.uom_id, 
+'From ' ||f.name||' '|| case when a.picking_id is null then COALESCE(a.name,' ') when k.name is not null then COALESCE(COALESCE(j.name,' ')||' '|| COALESCE(k.name,' ')||' '|| COALESCE(l.name,' ')||COALESCE(m.name,' '),' ') else COALESCE(COALESCE(j.name,' ')|| ' '|| COALESCE(l.name,' ')||COALESCE(m.name,' '),' ') end as origin from 
+stock_move a
+inner join
+product_product b on a.product_id=b.id
+inner join 
+product_template c on b.product_tmpl_id=c.id
+inner join
+product_uom d on c.uom_id=d.id
+inner join
+product_uom e on a.product_uom=e.id
+inner join
+stock_location f on a.location_id=f.id
+left outer join
+stock_picking j
+on a.picking_id=j.id
+left outer join
+res_partner k
+on j.partner_id=k.id
+left outer join 
+sale_order l
+on j.sale_id=l.id
+left outer join
+purchase_order m
+on j.purchase_id=m.id
+where  
+a.state in ('done') and a.date <= %s and a.date >= %s ) aaa
+
+) hhhh
+on aaaa.product_id=hhhh.product_id and aaaa.location_id=hhhh.location_sec_id
+
+where 
+COALESCE(hhhh.prod_outgoing_qty_done,'0')!=0 OR COALESCE(hhhh.prod_incoming_qty_done,'0')!=0 OR COALESCE( COALESCE(eeee.prod_incoming_qty_done,'0') - COALESCE(dddd.prod_outgoing_qty_done,'0'),'0') - COALESCE( COALESCE(gggg.prod_incoming_qty_done,'0') - COALESCE(ffff.prod_outgoing_qty_done,'0'),'0') !=0
+
+) aaaaa

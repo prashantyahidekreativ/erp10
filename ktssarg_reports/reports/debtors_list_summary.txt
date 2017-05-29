@@ -1,0 +1,87 @@
+select ah.region_type,
+sum(ah.total_amount) as total_amount, 
+sum(ah.payment) as payment, 
+sum(ah.credit_note) as credit_note, 
+sum( case when ah.overdue_type='above 240 days' then ah.total_amount else 0 end)  as above_240_days, 
+sum( case when ah.overdue_type='181 to 240 days' then ah.total_amount else 0 end)  as d181_to_240_days, 
+sum( case when ah.overdue_type='121 to 180 days' then ah.total_amount else 0 end)  as d121_to_180_days, 
+sum( case when ah.overdue_type='91 to 120 days' then ah.total_amount else 0 end)  as d91_to_120_days, 
+sum( case when ah.overdue_type='45 to 90 days' then ah.total_amount else 0 end)  as d45_to_90_days,
+sum( case when ah.overdue_type='Below 45 days' then ah.total_amount else 0 end) + sum( case when ah.overdue_type='Not Over Due' then ah.total_amount else 0 end)  as dBelow_45_days, 
+sum( case when ah.overdue_type='Not Over Due' then ah.total_amount else 0 end)  as dNot_Over_Due  
+from 
+(select COALESCE(sum(af.amount_total),'0') as total_amount,
+coalesce(sum(af.payment_amount),'0') as payment,
+coalesce(sum(af.credit_note_amount),'0') as credit_note,
+coalesce(af.overdue_type,'Not Defined') as overdue_type,
+coalesce(ag.region,'Not Defined') as region_type
+from
+(select
+COALESCE(aa.number,'') as number, 
+COALESCE(aa.amount_total,'0') as amount_total, 
+COALESCE(aa.payment_amount,'0') as payment_amount,
+COALESCE(aa.credit_note_amount,'0') as credit_note_amount,
+COALESCE(aa.Overdue_type,'') as overdue_type,
+aa.partner_id
+from
+(select 
+COALESCE(a1.customer_name,'') as customer_name, 
+COALESCE(a1.customer_code,'') as customer_code, 
+COALESCE(a1.po_number,'') as po_number,
+a1.po_date,
+a1.date_invoice, 
+COALESCE(a1.number,'') as number, 
+COALESCE(a1.amount_total,'0') as amount_total, 
+a1.date_due, 
+COALESCE(d1.refund_detail,'') || COALESCE(e1.refund_detail,'') as payment_reference,
+COALESCE(d1.refund_credit,'0') + COALESCE(e1.refund_credit,'0')  as payment_amount,
+COALESCE(b1.refund_detail,'') || COALESCE(c1.refund_detail,'') as credit_note_reference,
+COALESCE(b1.refund_credit,'0') + COALESCE(c1.refund_credit,'0')  as credit_note_amount,
+COALESCE(a1.residual,'0') as residual_amount, 
+COALESCE(a1.payment_term,'') as payment_term,
+Case when a1.days_old < -240 then 'above 240 days' when a1.days_old < -180 then '181 to 240 days' when a1.days_old < -121 then '121 to 180 days' when  a1.days_old < -91 then '91 to 120 days' when a1.days_old < -45 then '45 to 90 days' when a1.days_old <= -1 then 'Below 45 days' else 'Not Over Due' end as Overdue_type,
+COALESCE(a1.courier_ref_no,'') as courier_ref_no,
+a1.partner_id
+from
+(select a.name as customer_name, a.customer_code customer_code, b.date_invoice, b.number, b.amount_total, b.residual, c.name as payment_term, b.date_due, b.courier_ref_no, b.move_id, b.account_id, d.reconcile_id, d.reconcile_partial_id, b.po_date, b.po_number, b.date_due - current_date as days_old, b.partner_id from res_partner a, account_invoice b, account_payment_term c, account_move_line d  where b.type= 'out_invoice' and b.partner_id=a.id and b.payment_term=c.id and b.move_id=d.move_id and b.account_id=d.account_id and b.state='open' ) as a1
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail,
+a.journal_id, a.reconcile_id from account_move_line a,  account_journal b, account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type ='sale_refund' and a.move_id=c.id group by a.journal_id, a.reconcile_id) as b1
+on a1.reconcile_id=b1.reconcile_id
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.journal_id, a.reconcile_partial_id from account_move_line a,  account_journal b , account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type ='sale_refund' and a.move_id=c.id group by a.journal_id, a.reconcile_partial_id) as c1
+on a1.reconcile_partial_id=c1.reconcile_partial_id
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.journal_id, a.reconcile_id from account_move_line a,  account_journal b , account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type not in ('sale','sale_refund') and a.move_id=c.id group by a.journal_id, a.reconcile_id) as d1
+on a1.reconcile_id=d1.reconcile_id
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.journal_id, a.reconcile_partial_id from account_move_line a,  account_journal b, account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type not in ('sale','sale_refund') and a.move_id=c.id group by a.journal_id, a.reconcile_partial_id) as e1
+on a1.reconcile_partial_id=e1.reconcile_partial_id  ) aa,
+(select 
+sum(COALESCE(a1.amount_total,'0')) as amount_partner_total, 
+sum(COALESCE(d1.refund_credit,'0') + COALESCE(e1.refund_credit,'0'))  as payment_partner_amount,
+sum(COALESCE(b1.refund_credit,'0') + COALESCE(c1.refund_credit,'0'))  as credit_note_partner_amount,
+sum(COALESCE(a1.residual,'0')) as residual_partner_amount, 
+a1.partner_id
+from
+(select a.name as customer_name, a.customer_code customer_code, b.date_invoice, b.number, b.amount_total, b.residual, c.name as payment_term, b.date_due, b.courier_ref_no, b.move_id, b.account_id, d.reconcile_id, d.reconcile_partial_id, b.po_date, b.po_number, b.date_due - current_date as days_old, b.partner_id from res_partner a, account_invoice b, account_payment_term c, account_move_line d  where b.type= 'out_invoice' and b.partner_id=a.id and b.payment_term=c.id and b.move_id=d.move_id and b.account_id=d.account_id and b.state='open' ) as a1
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail,
+a.journal_id, a.reconcile_id from account_move_line a,  account_journal b, account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type ='sale_refund' and a.move_id=c.id group by a.journal_id, a.reconcile_id) as b1
+on a1.reconcile_id=b1.reconcile_id
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.journal_id, a.reconcile_partial_id from account_move_line a,  account_journal b , account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type ='sale_refund' and a.move_id=c.id group by a.journal_id, a.reconcile_partial_id) as c1
+on a1.reconcile_partial_id=c1.reconcile_partial_id
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.journal_id, a.reconcile_id from account_move_line a,  account_journal b , account_move c where a.reconcile_id is not null and a.journal_id=b.id and b.type not in ('sale','sale_refund') and a.move_id=c.id group by a.journal_id, a.reconcile_id) as d1
+on a1.reconcile_id=d1.reconcile_id
+left join 
+(select sum(a.credit) as refund_credit, sum(a.debit) as refund_debit, COALESCE(replace(array_to_string(array_agg(c.name),','),' ',''),'') as refund_detail, a.journal_id, a.reconcile_partial_id from account_move_line a,  account_journal b, account_move c where a.reconcile_partial_id is not null and a.journal_id=b.id and b.type not in ('sale','sale_refund') and a.move_id=c.id group by a.journal_id, a.reconcile_partial_id) as e1
+on a1.reconcile_partial_id=e1.reconcile_partial_id
+group by a1.partner_id) bb
+where aa.partner_id=bb.partner_id) as af
+left join 
+(select a.id, array_to_string(array_agg(b.name),',')   as region from res_partner a, res_partner_category b , res_partner_category_rel c where a.id=c.partner_id and c.category_id=b.id  and b.parent_id in (select d.id from res_partner_category d where d.name='Marketing Zones') group by a.id) as ag
+on af.partner_id=ag.id 
+group by af.overdue_type,ag.region ) ah
+group by ah.region_type

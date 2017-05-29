@@ -1,0 +1,19 @@
+Select 
+COALESCE(i.name,'') as name, 
+COALESCE(i.code,'') as code, 
+case when (COALESCE(d.debit_total,'0.0') - COALESCE(d.credit_total,'0.0')) >=0  then (COALESCE(d.debit_total,'0.0') - COALESCE(d.credit_total,'0.0')) else 0.0 end as debit_total, 
+case when (COALESCE(d.debit_total,'0.0') - COALESCE(d.credit_total,'0.0')) >=0  then 0.0 else (COALESCE(d.credit_total,'0.0') - COALESCE(d.debit_total,'0.0')) end as credit_total
+from (select 
+b.id,replace(b.name,' Receivable','') as name,b.code 
+from account_account b
+where
+b.type='receivable' )  as i
+inner join 
+(select COALESCE(sum(a.debit),'0') as debit_total, COALESCE(sum(a.credit),'0') as credit_total, a.account_id as account_id from 
+account_move_line a, account_move b where a.move_id=b.id and b.state='posted' and a.date <= %s group by a.account_id) as d 
+on i.id=d.account_id
+where
+(
+(case when (COALESCE(d.debit_total,'0.0') - COALESCE(d.credit_total,'0.0')) >=0  then (COALESCE(d.debit_total,'0.0') - COALESCE(d.credit_total,'0.0')) else 0.0 end) +
+(case when (COALESCE(d.debit_total,'0.0') - COALESCE(d.credit_total,'0.0')) >=0  then 0.0 else (COALESCE(d.credit_total,'0.0') - COALESCE(d.debit_total,'0.0')) end )) > 0 
+Order by i.code

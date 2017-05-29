@@ -1,0 +1,52 @@
+select 
+COALESCE(aaa.number,'') as number, 
+COALESCE(aaa.date_invoice,'2000-01-01') as date_invoice, 
+COALESCE(aaa.total_amount,'0') as total_amount, 
+COALESCE(aaa.partner_name,'') as partner_name, 
+COALESCE(aaa.party_code,'') as party_code, 
+COALESCE(aaa.financial_yr,'') as financial_yr, 
+COALESCE(aaa.fin_total_amount,'0') as fin_total_amount , 
+COALESCE(aaa.c_form_amount,'0') as c_form_amount, 
+COALESCE(aaa.c_form_pending_amount,'0') as c_form_pending_amount,
+COALESCE(aaa.partner_id,'0') as partner_id
+from
+(select
+COALESCE(aa.number,'') as number, 
+COALESCE(aa.date_invoice,'2000-01-01') as date_invoice, 
+COALESCE(aa.total_amount,'0') as total_amount, 
+COALESCE(aa.partner_name,'') as partner_name, 
+COALESCE(aa.party_code,'') as party_code, 
+COALESCE(aa.financial_yr,'') as financial_yr, 
+COALESCE(bb.fin_total_amount,'0') as fin_total_amount , 
+COALESCE(cc.c_form_amount,'0') as c_form_amount, 
+COALESCE(COALESCE(aa.total_amount,'0') - COALESCE(cc.c_form_amount,'0'),'0') as c_form_pending_amount,
+COALESCE(aa.partner_id,'0') as partner_id
+from
+(
+select a.number, a.date_invoice, a.total_amount, c.name as partner_name, c.customer_code as party_code, a.partner_id, d.name as financial_yr, d.id as fin_year_id
+from account_invoice a, account_fiscal_position b, res_partner c, account_fiscalyear d
+where
+a.date_invoice between d.date_start and d.date_stop and
+a.partner_id=c.id and
+a.fiscal_position=b.id and
+a.state in ('open','paid') and a.type='out_invoice' and
+a.fiscal_position in (select id from account_fiscal_position where form_type='form_h' ) and
+a.date_invoice between d.date_start and d.date_stop ) aa
+inner join
+(select sum(a.total_amount) fin_total_amount, d.name as financial_yr, d.id as fin_year_id
+from account_invoice a, account_fiscal_position b, res_partner c, account_fiscalyear d
+where
+a.date_invoice between d.date_start and d.date_stop and
+a.partner_id=c.id and
+a.fiscal_position=b.id and
+a.state in ('open','paid') and
+a.fiscal_position in (select id from account_fiscal_position where form_type='form_h' ) and
+a.date_invoice between d.date_start and d.date_stop
+group by d.name, d.id) bb
+on aa.fin_year_id=bb.fin_year_id
+left outer join
+(select name, sum(c_form_amount) as c_form_amount from kts_invoice_list group by name) cc
+on aa.number=cc.name
+where 
+COALESCE(COALESCE(aa.total_amount,'0') - COALESCE(cc.c_form_amount,'0'),'0')  > 0
+) aaa

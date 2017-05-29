@@ -1,0 +1,69 @@
+select COALESCE(t.main_account_name,'') as main_account_name, 
+COALESCE(t.main_account_code,'') as main_account_code,
+COALESCE(t.journal_name,'') as journal_name, 
+COALESCE(t.journal_type,'') as journal_type,
+t.date, 
+COALESCE(t.system_reference,'') as system_reference, 
+case when COALESCE(t.user_reference,'')='' then  COALESCE(t.system_reference,'') else COALESCE(t.user_reference,'') end as user_reference, 
+COALESCE(replace(array_to_string(array_agg(case when COALESCE(t.user_invoice,'')='' then t.system_invoice else t.user_invoice end ),','),' ',''),'') as user_invoice, 
+COALESCE(array_to_string(array_agg(t.system_invoice),','),'') as system_invoice, 
+COALESCE(sum(t.debit),'0') as debit, COALESCE(sum(t.credit),'0') as credit, 
+COALESCE(max(t.carry_forward),'0') as carry_forward, 
+COALESCE(max(t.payment_total),'0') as payment_total, 
+COALESCE(max(t.receipt_total),'0') as receipt_total from
+(select  r.move_line_id, r.main_account_name, r.main_account_code, r.journal_name,r.journal_type,r.date, r.system_reference, r.user_reference, r.system_invoice,r.user_invoice,
+max(r.debit) as debit,max(r.credit) as credit,max(r.carry_forward) as carry_forward, max(r.payment_total) as payment_total, max(r.receipt_total) as receipt_total from 
+(select i.move_line_id,i.journal_id,q.name as journal_name, q.type journal_type, i.main_account_id,i.main_account_name,i.main_account_code, 
+i.debit, i.credit, i.counter_account_id,i.counter_account_name,i.counter_account_code, i.date,s.carry_forward, p.payment_total, p.receipt_total,o.invoice_no_by_user,o.internal_number, n.voucher_no_by_user,n.number, l.voucher_ref_by_user, l.name,i.reference, j.invoice_no_by_user,j.internal_number, k.invoice_no_by_user,k.internal_number, case when o.internal_number is not null then o.internal_number when l.name is not null then l.name when n.number is not null then n.number else i.reference end as system_reference, case when o.internal_number is not null then to_char(o.invoice_no_by_user,'99999') when l.name is not null then l.voucher_ref_by_user when n.number is not null then n.voucher_no_by_user else i.reference end as user_reference, case when j.internal_number is not null then j.internal_number when k.internal_number is not null then k.internal_number else null end as system_invoice , case when j.internal_number is not null then j.invoice_no_by_user when k.internal_number is not null then k.invoice_no_by_user else null end as user_invoice    from
+
+(select a.id as move_line_id, COALESCE(a.statement_id,'0') as statement_id, 
+COALESCE(a.journal_id,'0') as journal_id, COALESCE(a.partner_id,'0') as partner_id, 
+COALESCE(a.reconcile_partial_id	,'0') as reconcile_partial_id,  COALESCE(a.reconcile_id,'0') as reconcile_id,
+a.credit as credit, a.debit as debit, 
+a.ref as ref, a.account_id as main_account_id, d.account_id as counter_account_id,
+c.name as main_account_name,e.name as counter_account_name,
+a.move_id as move_id, 
+b.ref as reference, COALESCE(b.journal_id,'0') as move_journal_id, 
+b.narration as narration, b.date as date,
+COALESCE(b.partner_id,'0') as  move_partner_id,
+c.code as main_account_code, e.code as counter_account_code
+from account_move_line a, account_move b, account_account c, account_move_line d, account_account e
+where a.move_id=b.id and 
+a.account_id = c.id and
+d.account_id= e.id and 
+a.account_id!=d.account_id and 
+b.date >=%s 
+and b.date <=%s  and 
+a.move_id=d.move_id and
+c.type='receivable' and b.state='posted') as i 
+
+inner join 
+(select d.date_trans as date_trans,d.account_id as account_id, sum(d.debit_total)  as payment_total, sum(d.credit_total)  as receipt_total 
+from (select COALESCE(sum(a.debit),'0') as debit_total, COALESCE(sum(a.credit),'0') as credit_total, b.date as date_trans, COALESCE(sum(a.debit),'0') - COALESCE(sum(a.credit),'0') as balance,a.account_id as account_id from 
+account_move_line a, account_move b where a.move_id=b.id group by a.account_id, b.date) as d  group by d.account_id, d.date_trans order by d.account_id, d.date_trans ) as p
+on i.main_account_id=p.account_id and i.date=p.date_trans
+left join (select sum(a.debit) - sum(a.credit) as carry_forward, a.account_id from 
+account_move_line a, account_move b where a.move_id=b.id and b.date < %s and b.state='posted' group by a.account_id) as s
+on i.main_account_id=s.account_id
+
+left join 
+(select e.reconcile_id, array_to_string(array_agg(f.internal_number),',') as internal_number, array_to_string(array_agg(case when COALESCE(f.invoice_no_by_user,'0') = '0' then f.internal_number else replace(to_char(f.invoice_no_by_user,'99999'),' ','') end ),',')  as invoice_no_by_user  from account_move_line e, account_invoice f where e.move_id=f.move_id and e.reconcile_id is not null   group by e.reconcile_id ) as j 
+on i.reconcile_id=j.reconcile_id
+
+left join 
+(select g.reconcile_partial_id, array_to_string(array_agg(h.internal_number),',') as internal_number, array_to_string(array_agg(case when COALESCE(h.invoice_no_by_user,'0') = '0' then h.internal_number else replace(to_char(h.invoice_no_by_user,'99999'),' ','') end ),',')  as invoice_no_by_user  from account_move_line g, account_invoice h  where g.move_id=h.move_id and g.reconcile_partial_id is not null group by g.reconcile_partial_id) as k on i.reconcile_partial_id=k.reconcile_partial_id
+
+left join account_bank_statement as l on i.statement_id=l.id
+
+left join res_partner as m on i.partner_id=m.id
+
+left join account_voucher as n on i.move_id=n.move_id
+
+left join account_invoice as o on i.move_id=o.move_id
+
+left join account_journal as q on i.journal_id=q.id
+order by i.main_account_code,i.date,i.move_line_id ) as r
+group by r.move_line_id, r.main_account_name, r.main_account_code, r.journal_name,r.journal_type,r.date, r.system_reference, r.user_reference, r.system_invoice,r.user_invoice
+order by r.main_account_code,r.date,r.move_line_id ) t
+group by t.main_account_name, t.main_account_code, t.journal_name, t.journal_type, t.date, t.system_reference, t.user_reference
+order by t.main_account_name,t.date,t.system_reference

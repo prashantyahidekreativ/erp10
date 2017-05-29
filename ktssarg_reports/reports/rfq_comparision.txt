@@ -1,0 +1,15 @@
+select a.partner_id, d.name as partner_name, a.name as quotation_reference, case when  a.confirm_quotation ='t' and a.state='draft' then 'confirmed' else 'not confirmed' end as confirm_state , b.product_id, c.name as product_name, b.product_uom, e.name as unit_type, b.price_unit from purchase_order a, purchase_order_line b, product_product c, res_partner d, product_uom e , material_requisition f
+where
+f.name=%s
+and
+a.mr_id=f.id
+and
+a.id=b.order_id
+and
+a.partner_id=d.id
+and
+b.product_id=c.id
+and
+b.product_uom=e.id
+
+order by b.product_id,  b.price_unit, partner_name

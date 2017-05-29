@@ -1,0 +1,83 @@
+select 
+COALESCE(aaaa.product_id,'0') as product_id, 
+COALESCE(aaaa.location_id,'0') as location_id, 
+aaaa.prod_lot,
+eeee.move_id,
+COALESCE( COALESCE(eeee.prod_incoming_qty_done,'0') - COALESCE(dddd.prod_outgoing_qty_done,'0'),'0') - COALESCE(ffff.prod_outgoing_qty_assigned,'0') as quantity_available,
+COALESCE(gggg.domain,'') as domain
+
+from
+(select aaa.location_id, aaa.product_id, ccc.uom_id, bbb.name as prod_name, ddd.name as prod_uom, prod_lot, fff.location_type from 
+(select distinct aa.location_id, aa.product_id, prod_lot from (select location_id, product_id, COALESCE(prodlot_id,'0') as prod_lot from stock_move union select location_dest_id as location_id, product_id, COALESCE(prodlot_id,'0') as prod_lot from stock_move ) aa ) aaa,
+product_product bbb, product_template ccc, product_uom ddd, product_category eee, stock_location fff 
+where aaa.product_id=bbb.id and bbb.product_tmpl_id=ccc.id and ccc.uom_id=ddd.id and ccc.product_category_id=eee.id and aaa.location_id=fff.id  ) aaaa
+
+inner join
+(select distinct aa.product_id, aa.domain
+from 
+(
+select  a.product_id, c.domain
+from 
+stock_move a, product_product b, product_template c, stock_picking f, product_category g
+where 
+a.picking_id=f.id and
+a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.product_category_id=g.id and
+g.gage_type!='screw_handle' and
+a.state in  ('confirmed','waiting') and 
+f.type='out' and 
+f.state in ('assigned', 'confirmed','waiting') and
+c.domain in ('assembly', 'product')
+union
+select  i.id as product_id, j.domain
+from 
+stock_move a, product_product b, product_template c, stock_picking f, mrp_bom g, mrp_bom h, product_product i, product_template j
+where 
+a.picking_id=f.id and
+a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.domain in ('assembly') and 
+b.id=g.product_id and
+g.bom_id is null and
+g.id=h.bom_id and
+h.product_id=i.id and 
+i.product_tmpl_id=j.id and
+a.state in  ('confirmed','waiting') and 
+f.type='out' and 
+f.state in ('assigned', 'confirmed','waiting')
+) aa
+) gggg
+on aaaa.product_id=gggg.product_id
+
+left outer join
+( select a.product_id, a.location_id as location_sec_id, sum(a.product_qty * d.factor/e.factor) as prod_outgoing_qty_done, c.uom_id, COALESCE(a.prodlot_id,'0') as product_lot from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.product_uom=e.id 
+group by a.product_id, a.location_id, c.uom_id, a.prodlot_id ) dddd
+on aaaa.product_id=dddd.product_id and aaaa.location_id=dddd.location_sec_id and aaaa.prod_lot=dddd.product_lot
+
+left outer join
+( select a.product_id, a.location_dest_id, sum(a.product_qty * d.factor/e.factor) as prod_incoming_qty_done, c.uom_id, COALESCE(a.prodlot_id,'0') as product_lot, max(a.id) as move_id from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('done') and a.product_uom=e.id
+group by a.product_id, a.location_dest_id, c.uom_id, a.prodlot_id ) eeee
+on aaaa.product_id=eeee.product_id and aaaa.location_id=eeee.location_dest_id and aaaa.prod_lot=eeee.product_lot
+
+left outer join
+( select a.product_id, a.location_id as location_sec_id, sum(a.product_qty * d.factor/e.factor) as prod_outgoing_qty_assigned, c.uom_id, COALESCE(a.prodlot_id,'0') as product_lot from stock_move a, product_product b, product_template c, product_uom d, product_uom e
+where a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in ('assigned') and a.product_uom=e.id
+group by a.product_id, a.location_id, c.uom_id, a.prodlot_id ) ffff
+on aaaa.product_id=ffff.product_id and aaaa.location_id=ffff.location_sec_id and aaaa.prod_lot=ffff.product_lot
+inner join
+(select id,name as stock_location from stock_location where usage='internal') hhhh
+on  aaaa.location_id=hhhh.id
+where 
+COALESCE( COALESCE(eeee.prod_incoming_qty_done,'0') - COALESCE(dddd.prod_outgoing_qty_done,'0'),'0') - COALESCE(ffff.prod_outgoing_qty_assigned,'0') >0

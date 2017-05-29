@@ -1,0 +1,51 @@
+select
+COALESCE(aa.product_id,'0') as product_id,
+COALESCE(aa.location_id,'0') as location_id,
+COALESCE(aa.req_qty,'0') - COALESCE(bb.alloc_qty,'0') as req_qty,
+COALESCE(aa.uom_id,'0') as uom_id, 
+COALESCE(aa.domain,'') as domain,
+COALESCE(aa.move_id,'0') as move_id,
+COALESCE(dd.date_delivery,'2000-01-01') as date_delivery,
+COALESCE(aa.sale_id,'0') as sale_id,
+COALESCE(aa.sequence,'0') as sequence,
+COALESCE(cc.origin,'') as origin
+
+from 
+
+(select a.location_id, a.product_id, sum(a.product_qty * d.factor/e.factor) as req_qty, c.uom_id, c.domain, max(a.id) as move_id, COALESCE(f.sale_id,'0') as sale_id, COALESCE(a.sequence,'0') as sequence
+from 
+stock_move a, product_product b, product_template c, product_uom d, product_uom e, stock_picking f
+where 
+a.picking_id=f.id and
+a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in  ('confirmed') and a.product_uom=e.id and f.type='out' and f.state in ('assigned', 'confirmed','waiting') and COALESCE(f.service,'f')='f'
+group by a.product_id, a.location_id, c.uom_id, c.domain,f.sale_id, a.sequence ) aa
+
+left outer join
+(select a.product_id as prod_id, sum(a.product_qty * d.factor/e.factor) as alloc_qty, c.uom_id, c.domain as domain_type, COALESCE(f.sale_id,'0') as sale_id, COALESCE(a.system_sequence,'0') as sequence
+from 
+stock_move a, product_product b, product_template c, product_uom d, product_uom e, stock_picking f, stock_location g
+where 
+a.picking_id=f.id and
+a.product_id=b.id and
+b.product_tmpl_id=c.id and
+c.uom_id=d.id and
+a.state in  ('waiting', 'assigned') and a.product_uom=e.id and f.state in ('assigned', 'confirmed','waiting') and a.location_dest_id=g.id and g.location_type='packing_pdi_delivery_zone'
+group by a.product_id, c.uom_id, c.domain, f.sale_id, a.system_sequence ) bb
+on aa.product_id=bb.prod_id and aa.sale_id=bb.sale_id and aa.sequence=bb.sequence
+
+
+left outer join
+(select id as sale_id, name as origin from sale_order ) cc
+on aa.sale_id=cc.sale_id
+
+
+left outer join
+(
+select distinct a.product_id, COALESCE(a.order_id,'0') order_id,
+a.sequence, 
+b.date_confirm + cast(a.delay as integer) as date_delivery 
+from sale_order b, sale_order_line a where a.order_id=b.id and b.state in ('manual','progress')) dd
+on dd.order_id=aa.sale_id and aa.product_id=dd.product_id and aa.sequence=dd.sequence

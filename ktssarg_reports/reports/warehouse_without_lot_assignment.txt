@@ -1,0 +1,15 @@
+select COALESCE(bb.sale,'') as sale, COALESCE(bb.order_acceptance_ref_no,'') as order_acceptance_ref_no,  COALESCE(bb.customer_name,'') as customer_name, COALESCE(aa.delivery,'') as delivery, COALESCE(aa.sequence,'0') as sequence, COALESCE(aa.product_name,'') as product_name, COALESCE(aa.product_qty,'0') as product_qty, COALESCE(aa.unit_of_measure,'') as uom from
+(select  b.name as delivery, a.product_id, c.name as product_name, a.product_qty, d.name as unit_of_measure, b.sale_id, a.sequence from stock_move a, stock_picking b, product_product c, product_uom d
+where
+a.picking_id=b.id and
+a.product_id=c.id and
+a.product_uom=d.id and
+a.state='assigned' and
+a.prodlot_id is null and
+b.type in ('out', 'internal')
+) aa
+left outer join
+(select a.id, a.name as sale, order_acceptance_ref_no,  b.name as customer_name from sale_order a, res_partner b where a.partner_id=b.id) bb
+on
+aa.sale_id=bb.id
+Order by bb.sale, aa.delivery, aa.sequence

@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="kts_act_report_xml_view_update" model="ir.ui.view">
+            <field name="name">ir.actions.report.xml.aeroo.form_kts</field>
+            <field name="model">ir.actions.report.xml</field>
+            <field name="type">form</field>
+            <field name="inherit_id" ref="report_aeroo.act_report_xml_view1"/>            
+            <field name="arch" type="xml">
+                <field name="out_format"  position="after">
+                    <button name="to_update_file_name" string="Update Report Files" type="object"/>
+                    <field name="update_query" />
+                    <separator string="Update Info" />  
+                    <field name="update_info" label="0"/>
+                </field>                
+            </field>
+        </record>
+
+      <record id="kts_account_report_form" model="ir.ui.view">
+      <field name="name">kts.account.report.form</field>
+      <field name="model">kts.account.report</field>
+          <field name="arch" type="xml">
+            <form string="Account Reports">
+               <header>
+               <button name="to_print_account" type="object" string="Print" class="oe_highlight"/>
+               </header>
+               <sheet string="Account Report">
+                   <group>
+                      <field name="name"/>
+                      <field name="report_type" attrs="{'required':True}"/>
+                      <field name="date_start" attrs="{'required':[('report_type','!=','envelope_print')],'invisible':[('report_type','=','envelope_print')]}"/>
+                      <field name="date_stop" attrs="{'required':[('report_type','not in',['creditors_trial_balance','debtors_trial_balance','pl_and_balance_sheet_compare','envelope_print'])],'invisible':[('report_type','in',['creditors_trial_balance','debtors_trial_balance','envelope_print'])]}"/>
+                      <field name="account_id" attrs="{'invisible':[('report_type','!=','bank_book')],'required':[('report_type','==','bank_book')] }"/>
+                      <field name="partner_id" attrs="{'invisible':[('report_type','not in',['creditors_ledger','debtors_ledger','envelope_print'])], }" domain="[('parent_id','=',False)]"/>
+                      <field name="address_type" attrs="{'invisible':[('report_type','!=','envelope_print')],}" />
+                      <field name="address_id" attrs="{'invisible':[('report_type','!=','envelope_print')],}" />
+                   </group>
+               </sheet>
+            </form>
+          </field>
+      </record>      
+      
+      <record id="kts_account_report_tree" model="ir.ui.view">
+      <field name="name">kts.account.report.tree</field>
+      <field name="model">kts.account.report</field>
+          <field name="arch" type="xml">
+            <tree string="Account Reports">
+               
+               <field name="name"/>
+               <field name="report_type"/>
+               <field name="date_start"/>
+               <field name="date_stop"/>
+         
+            </tree>
+          </field>
+      </record>      
+      
+      <record id="action_kts_account_report" model="ir.actions.act_window">
+            <field name="name">Account Report</field>
+            <field name="res_model">kts.account.report</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>           
+       </record>
+       
+       <menuitem
+            id="menu_kts_account_report"
+            action="action_kts_account_report"
+            name="Account Report"
+            parent="account.menu_finance_reports"    
+            sequence="11"/> 
+       
+       <record id="kts_payment_receipt_voucher_report_form" model="ir.ui.view">
+            <field name="name">kts.payment.receipt.voucher.form</field>
+            <field name="model">account.payment</field>
+            <field name="type">form</field>
+            <field name="inherit_id" ref= "account.view_account_payment_form" />            
+            <field name="arch" type="xml">
+                <button name="post" position="after" >
+                    <button  name="to_print_reciept_voucher" string="Print Receipt/Voucher"  type="object" states="posted,reconciled" />                                               
+                </button>
+            <field name="payment_date" position="after">
+             <field name="type" widget="selection"/>
+            </field> 
+             </field>
+        </record> 
+      
+      <record id="kts_inventory_report_form" model="ir.ui.view">
+      <field name="name">kts.inventory.report.form</field>
+      <field name="model">kts.inventory.reports</field>
+          <field name="arch" type="xml">
+            <form string="Inventory Reports">
+               <header>
+               <button name="to_print_inventory" type="object" string="Print" class="oe_highlight"/>
+               </header>
+               <sheet string="Inventory Report">
+                   <group>
+                      <field name="name"/>
+                      <field name="report_type" attrs="{'required':True}"/>
+                      <field name="date_start" attrs="{'required':[('report_type','not in',('reorder_report','material_reservation_status','stock_list'))],'invisible':[('report_type','in',('reorder_report','material_reservation_status','stock_list'))]}"/>
+                      <field name="date_stop" attrs="{'required':[('report_type','not in',('reorder_report','stock_list','material_reservation_status','historical_stock_list'))],'invisible':[('report_type','in',('stock_list','reorder_report','material_reservation_status','historical_stock_list'))]}" />
+                      <field name="product_id" attrs="{'invisible':[('report_type','not in',('reorder_report','material_reservation_status',))]}"/>
+                      <field name="location_id" options="{'no_quick_create': True, 'no_create' : True}" attrs="{'invisible':[('report_type','!=','scrap_inward_register')]}" domain="[('scrap_location','=',True)]"/>
+                      <field name="location_id1" options="{'no_quick_create': True, 'no_create' : True}" attrs="{'required':[('report_type','in',('material_reservation_status'))],'invisible':[('report_type','not in',('material_reservation_status','stock_list','historical_stock_list'))]}" domain="[('usage','=','internal')]" /> 
+                      <field name="categ_id" options="{'no_quick_create': True, 'no_create' : True}" attrs="{'invisible':[('report_type','not in',('stock_list','reorder_report','material_reservation_status'))]}"/>
+                   </group>
+               </sheet>
+            </form>
+          </field>
+      </record>      
+      
+      <record id="kts_inventory_report_tree" model="ir.ui.view">
+      <field name="name">kts.inventory.report.tree</field>
+      <field name="model">kts.inventory.reports</field>
+          <field name="arch" type="xml">
+            <tree string="Inventory Reports">
+                      <field name="name"/>
+                      <field name="report_type" />
+                      <field name="date_start" />
+                      <field name="date_stop"/>
+            </tree>
+          </field>
+      </record>      
+      
+      <record id="action_kts_inventory_report" model="ir.actions.act_window">
+            <field name="name">Inventory Report</field>
+            <field name="res_model">kts.inventory.reports</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>           
+       </record>
+       
+       <menuitem
+            id="menu_kts_inventory_report"
+            action="action_kts_inventory_report"
+            name="Inventory Reports"
+            parent="stock.menu_warehouse_report"    
+            sequence="151"/> 
+      
+      <record id="kts_view_stock_picking_delivery_form_inherit1" model="ir.ui.view">
+            <field name="name">stock.picking.delivery.form.inherit1</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>     
+                 
+                 <field name="arch" type="xml">
+                  <button name="do_print_picking" position="replace"/>
+                  <xpath expr="//button[@name='action_cancel']" position="after">
+                  <field name="picking_type_code" invisible="1"/>
+                  <button name="to_print_delivery_chalan" type="object" string="Print Chalan" attrs="{'invisible':[('picking_type_code','!=','outgoing'),('state','not in',('done'))]}"/>              
+                  <button name="print_barcode" type="object" string="Print Barcode" attrs="{'invisible':['|',('picking_type_code','!=','incoming'),('state','not in',['partially_available','assigned','done'])]}"  />
+                  </xpath>
+                 </field>
+      </record>   
+      
+      
+      <record id="kts_mrp_report_form" model="ir.ui.view">
+      <field name="name">kts.mrp.report.form</field>
+      <field name="model">kts.mrp.reports</field>
+          <field name="arch" type="xml">
+            <form string="MRP Reports">
+               <header>
+               <button name="to_print_mrp" type="object" string="Print" class="oe_highlight"/>
+               </header>
+               <sheet string="MRP Report">
+                   <group>
+                      <field name="name"/>
+                      <field name="report_type" attrs="{'required':True}"/>
+                      <field name="date_start" attrs="{'required':True,}"/>
+                      <field name="date_stop" attrs="{'required':True,}"/>
+                      <field name="location_id" options="{'no_quick_create': True, 'no_create' : True}" attrs="{'invisible':[('report_type','!=','scrap_inward_mrp_register')]}" domain="[('scrap_location','=',True)]"/>
+                      <field name="categ_id" options="{'no_quick_create': True, 'no_create' : True}" attrs="{'invisible':[('report_type','in',('scrap_inward_mrp_register','daily_production','daily_production_vs_plan_achieved','daily_production_plan','wip_stock_register','scrap_inward_mrp_register','total_production'))]}" />
+                   </group>
+               </sheet>
+            </form>
+          </field>
+      </record>      
+      
+      <record id="kts_mrp_report_tree" model="ir.ui.view">
+      <field name="name">kts.mrp.report.tree</field>
+      <field name="model">kts.mrp.reports</field>
+          <field name="arch" type="xml">
+            <tree string="MRP Reports">
+                      <field name="name"/>
+                      <field name="report_type" />
+                      <field name="date_start" />
+                      <field name="date_stop"/>
+            </tree>
+          </field>
+      </record>      
+      
+      <record id="action_kts_mrp_report" model="ir.actions.act_window">
+            <field name="name">MRP Report</field>
+            <field name="res_model">kts.mrp.reports</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>           
+       </record>
+       
+       <menuitem
+            id="menu_kts_mrp_report"
+            action="action_kts_mrp_report"
+            name="MRP Reports"
+            parent="mrp.menu_mrp_reporting"    
+            groups="base.group_user"
+            sequence="15"/> 
+     
+      
+      <record id="kts_purchase_report_form" model="ir.ui.view">
+      <field name="name">kts.purchase.report.form</field>
+      <field name="model">kts.purchase.reports</field>
+          <field name="arch" type="xml">
+            <form string="Purchase Reports">
+               <header>
+               <button name="to_print_purchase" type="object" string="Print" class="oe_highlight"/>
+               </header>
+               <sheet string="Purchase Report">
+                   <group>
+                      <field name="name"/>
+                      <field name="report_type" attrs="{'required':True}"/>
+                      <field name="date_start" attrs="{'required':True}"/>
+                      <field name="date_stop" attrs="{'required':True}"/>
+                      <field name="partner_id" domain="[('supplier','=',True),('parent_id','=',False)]" attrs="{'invisible':[('report_type','in',('total_po_summary','total_freight_value'))]}"/>
+                      <field name="categ_id" attrs="{'invisible':[('report_type','in',('total_po_summary','total_freight_value','po_register'))]}"/>
+                   </group>
+               </sheet>
+            </form>
+          </field>
+      </record>      
+      
+      <record id="kts_purchase_report_tree" model="ir.ui.view">
+      <field name="name">kts.purchase.report.tree</field>
+      <field name="model">kts.purchase.reports</field>
+          <field name="arch" type="xml">
+            <tree string="Purchase Reports">
+                      <field name="name"/>
+                      <field name="report_type" />
+                      <field name="date_start" />
+                      <field name="date_stop"/>
+            </tree>
+          </field>
+      </record>      
+      
+      <record id="action_kts_purchase_report" model="ir.actions.act_window">
+            <field name="name">Purchase Report</field>
+            <field name="res_model">kts.purchase.reports</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>           
+       </record>
+       
+       <menuitem
+            id="menu_kts_purchase_report"
+            action="action_kts_purchase_report"
+            name="Purchase Reports"
+            parent="purchase.menu_procurement_management"
+            groups="base.group_user"    
+            sequence="98"/> 
+     
+     <record id="kts_sale_order_report_form" model="ir.ui.view">
+            <field name="name">kts.sale.order.report.form</field>
+            <field name="model">sale.order</field>
+            <field name="type">form</field>
+            <field name="inherit_id" ref= "sale.view_order_form" />            
+            <field name="arch" type="xml">
+                <button name="print_quotation" position="replace"/>
+                <button name="print_quotation" position="replace"/>  
+                <button name="action_cancel" position="after" >
+                    <button  name="to_print_sale_order" string="Print"  type="object" states="sale" />                                               
+                    <button  name="to_print_quotation_sale_order" string="Print Quotation"  type="object" states="draft,sent" />                                               
+                
+                </button>
+               <field name="payment_term_id" position="after">
+                  <field name="print_header"/>
+               </field>
+             </field>
+     </record> 
+        
+       <record id="kts_view_account_invoice_report_form" model="ir.ui.view">
+             <field name="name">kts.account.invoice.report.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_form"/>
+                   <field name="arch" type="xml">
+                   <button name="invoice_print" position="replace"/>
+                   <button name="invoice_print" position="replace"/>
+                   
+                   <xpath expr="//button[@name='action_invoice_sent']" position="before">
+                   <button name="to_print_invoice" string="Print Inv" type="object" attrs="{'invisible':[('state', '!=', 'open')]}" class="oe_highlight"/>
+                   
+                   </xpath>
+                   
+                   <field name="tax_line_ids" position="after">
+                    <separator string="Remark For Invoice" colspan="4"/>
+                    <field name="remark" colspan="4" nolabel="1"
+                        placeholder="This note will be displayed on the invoice remark."/>
+                     </field>
+                   <field name="team_id" position="after">
+                     <field name="print_header"/>
+                   </field>
+                   </field>
+      </record>    
+      
+      <record id="kts_view_supplier_account_invoice_report_form" model="ir.ui.view">
+             <field name="name">kts.supplier.account.invoice.report.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_supplier_form"/>
+                   <field name="arch" type="xml">
+                   
+                   <xpath expr="//button[@name='action_invoice_open']" position="after">
+                   <button name="to_print_invoice" string="Print Inv" type="object" attrs="{'invisible':[('state', '!=', 'open')]}" class="oe_highlight"/>
+                   </xpath>
+                   <field name="date_due" position="after">
+                     <field name="print_header"/>
+                   </field>
+                   </field>
+      </record>    
+     
+     <record id="kts_sales_report_form" model="ir.ui.view">
+      <field name="name">kts.sale.report.form</field>
+      <field name="model">kts.sale.reports</field>
+          <field name="arch" type="xml">
+            <form string="Sale Reports">
+               <header>
+               <button name="to_print_sale" type="object" string="Print" class="oe_highlight"/>
+               </header>
+               <sheet string="Sale Report">
+                   <group>
+                      <field name="name"/>
+                      <field name="report_type" attrs="{'required':True}"/>
+                      <field name="date_start" attrs="{'required':[('report_type','not in',('standard_warranty_report',))],'invisible':[('report_type','in',('standard_warranty_report',))]}"/>
+                      <field name="date_stop" attrs="{'required':[('report_type','not in',('standard_warranty_report',))],'invisible':[('report_type','in',('standard_warranty_report',))]}"/>
+                      
+                   </group>
+               </sheet>
+            </form>
+          </field>
+      </record>      
+      
+      <record id="kts_sale_reports_tree" model="ir.ui.view">
+      <field name="name">kts.sale.report.tree</field>
+      <field name="model">kts.sale.reports</field>
+          <field name="arch" type="xml">
+            <tree string="Sale Reports">
+                      <field name="name"/>
+                      <field name="report_type" />
+                      <field name="date_start" />
+                      <field name="date_stop"/>
+            </tree>
+          </field>
+      </record>      
+      
+      <record id="action_kts_sale_report" model="ir.actions.act_window">
+            <field name="name">Sale Report</field>
+            <field name="res_model">kts.sale.reports</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>           
+       </record>
+       
+       <menuitem
+            id="menu_kts_sale_report"
+            action="action_kts_sale_report"
+            name="Sale Reports"
+            parent="sales_team.menu_sale_report"
+            groups="base.group_user"    
+            sequence="12"/> 
+     
+     
+      
+      <record id="kts_account_move_report_form" model="ir.ui.view">
+            <field name="name">kts.account.move.report.form</field>
+            <field name="model">account.move</field>
+            <field name="type">form</field>
+            <field name="inherit_id" ref="account.view_move_form" />            
+            <field name="arch" type="xml">
+               
+                <button name="button_cancel" position="after" >
+                    <button  name="to_print_journal_voucher" string="Print"  type="object" />                                               
+                </button>
+             </field>
+     </record> 
+     
+     <record id="kts_purchase_order_report_form" model="ir.ui.view">
+            <field name="name">kts.purchase.order.report.form</field>
+            <field name="model">purchase.order</field>
+            <field name="type">form</field>
+            <field name="inherit_id" ref= "purchase.purchase_order_form" />            
+            <field name="arch" type="xml">
+                
+                <button name="print_quotation" position="replace"/>
+                <button name="print_quotation" position="replace"/>  
+                <button name="button_cancel" position="after" >
+                    <button  name="to_print_purchase_order" string="Print"  type="object" states="draft,sent,purchase" />                                               
+                </button>
+             <field name="date_order" position="after">
+             <field name="print_header"/>
+             </field>
+             </field>
+     </record> 
+        
+
+</data>
+</odoo>
