@@ -5,7 +5,7 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import random
 import re
-
+from odoo.addons.ktssarg_reports.ktssarg_reports import do_print_setup 
 class kts_disciplinary_details(models.Model):
     _name='kts.disciplinary.details'
     log_date=fields.Date(string='Date', copy=False,)
@@ -728,3 +728,319 @@ class kts_service_account_invoice(models.Model):
     _inherit='account.invoice'
     service_id=fields.Many2one('kts.service.management',string='Service')
 
+class kts_service_report(models.Model):
+    _name='kts.service.report'
+    def get_move_lines(self):
+        move_obj=[]
+        if self.report_type =='Service_due':     
+            move_obj = self.Service_due()
+        
+        elif self.report_type == 'service_visit_report':
+             move_obj = self.service_visit_report()
+        
+        elif self.report_type == 'material_consumtion_report':
+             move_obj = self.material_consumtion_report()
+        
+        elif self.report_type == 'after_sale_service_status_report':
+             move_obj = self.after_sale_service_status_report()
+        
+        elif self.report_type == 'visit_material_history_report':
+             move_obj = self.visit_material_history_report()
+        
+        return move_obj
+         
+    
+    def _get_report_type(self):
+        report_type=[]
+        report_type.append(('Service_due','Service Due Register'))
+        report_type.append(('service_visit_report','Service Visit Report')) 
+        report_type.append(('material_consumtion_report','Material Consumtion Report')) 
+        report_type.append(('after_sale_service_status_report','After Sale Service Status Report')) 
+        report_type.append(('visit_material_history_report','Visit Material History Report')) 
+        
+        return report_type
+    
+    name=fields.Char('Name')
+    date= fields.Date('Todays Date',)
+    expire=fields.Selection([('monthly','Monthly'),('quat','Quarterly')],string='Expire on')
+    report_type=fields.Selection(_get_report_type, string='Report Type')
+    date_start=fields.Date(string='Start Date')
+    date_stop=fields.Date(string='End Date')
+    service_type=fields.Selection([('install','Installation'),('proact','Proactive'),('aftersale','After Sale service')],string='Service type')
+    contract_id=fields.Many2one('kts.contract.customer',string='Contract')
+    partner_id=fields.Many2one('res.partner',string='Customer',domain=[('parent_id','=',False)])
+    
+    def to_print_service(self):
+        context={}
+        this = self.browse() 
+        context=context
+        if self.report_type == 'Service_due':
+           report_name='Service_due'
+           report_name1='Service Due Register'
+        elif self.report_type == 'service_visit_report':
+            report_name='service_visit_report'
+            report_name1='Service Visit Report'
+        elif self.report_type == 'material_consumtion_report':
+            report_name='material_consumtion_report'
+            report_name1='Material Consumtion Report'
+        elif self.report_type == 'after_sale_service_status_report':
+            report_name='after_sale_service_status_report'
+            report_name1='After Sale Service Status Report'
+        elif self.report_type == 'visit_material_history_report':
+            report_name='visit_material_history_report'
+            report_name1='Visit Material History Report'
+            
+        context.update({'this':this, 'uiModelAndReportModelSame':False})
+        
+        return do_print_setup(self,{'name':report_name1, 'model':'kts.service.report','report_name':report_name},
+                False,context)
+    
+    def visit_material_history_report(self):
+        lines=[]
+        domain=[]
+        if self.contract_id:
+           domain.append(('invcontract_id','=',self.contract_id.id))
+        if self.partner_id:
+            domain.append(('partner_id','=',self.partner_id.id))    
+        move_lines=self.env['kts.service.management'].search(domain)     
+        for line in move_lines:
+            lines.append({
+                          'main':True,
+                          'contract':line.invcontract_id.name if line.invcontract_id else '',
+                          'product':line.invcontract_id.product_id.name,
+                          'serial':line.invcontract_id.lot_ids.name if line.invcontract_id.lot_ids else '',
+                          'service':line.name,
+                          'service_type':line.type,
+                          'visit_line':False,
+                          'material_line':False
+                          })
+            for line1 in line.visit_line:
+                lines.append({
+                              'main':False,
+                              'emp':line1.emp_id.name,
+                              'state':line1.state,
+                              'start_date':line1.start_time,
+                              'stop_date':line1.end_time,
+                              'charges':line1.product_price,
+                              'invoice':'Yes' if line1.invoice_flag else 'No',
+                              'visit_line':True,
+                              'material_line':False 
+                              })
+            
+            for line3 in line.picking_lines:
+                for line2 in line3.move_lines:
+                    lines.append({
+                              'main':False,
+                              'material':line2.product_id.name,
+                              'charges1':line2.product_id.list_price,
+                              'qty':line2.product_uom_qty,
+                              'invoice1':'Yes' if line1.invoice_flag else 'No',
+                              'visit_line':False,
+                              'material_line':True
+                              })
+        return lines
+    
+    def service_visit_report(self):
+        lines=[]
+        service=''
+        move_lines=self.env['kts.visit.details'].search([('start_time','>=',self.date_start),('start_time','>=',self.date_stop)])
+        i=0
+        for line in move_lines:
+            if service != line.service_management_id.name:
+                service=line.service_management_id.name
+                service1=service
+            else:
+                service1=''
+            lines.append({
+                          'service':service1,
+                          'customer':''
+                          })
+            i+=1
+            lines.append({
+                          'sr_no':i,
+                          'service':service1,
+                          'customer':line.service_management_id.partner_id.name,
+                          'assign':line.emp_id.name if line.emp_id else line.service_management_id.vendor_id.name,
+                          'invoice':'Yes' if line.invoice_flag else 'No'
+                          })     
+        return lines
+    
+    def material_consumtion_report(self):
+        lines=[]
+        move_lines=self.env['stock.picking'].search([('date_done','>=',self.date_start),('date_done','<=',self.date_stop),('service_id','!=',False),('state','=','done')])
+        i=0
+        service=''
+        for line in move_lines:
+            if service != line.service_id.name:
+                service = line.service_id.name
+                service1 = service
+            else:
+                service1=''
+            lines.append({
+                          'service':service1,
+                          'customer':''
+                          })
+         
+            for line1 in line.move_lines:
+                i+=1
+                lines.append({
+                          'sr_no':i,
+                          'service':service1,
+                          'customer':line.partner_id.name,
+                          'picking':line.name,
+                          'product':line1.product_id.name,
+                          'qty':line1.product_uom_qty,
+                          'invoice':'Yes' if line1.invoice_flag else 'No'
+                          
+                          })     
+        
+        return lines
+    
+    
+    def Service_due(self):
+          lines=[]
+          if self.service_type:
+              if self.service_type=='install':
+                  subquery=' and a.service_type = \'installation\' '
+              elif self.service_type=='proact':
+                   subquery=' and a.service_type = \'maintainance\' '
+              elif self.service_type=='aftersale':
+                   subquery=' and a.type = \'report_customer\' '
+              
+          expire=self.expire
+          if expire=='monthly':
+              self.date=fields.Datetime.now()
+              date1=fields.Datetime.from_string(self.date)
+              date2=date1+relativedelta(months=1)
+              date2= fields.Datetime.to_string(date1)
+          elif expire=='quat':
+              self.date=fields.Datetime.now()
+              date1=fields.Datetime.from_string(self.date)
+              date2=date1+relativedelta(months=3)
+              date2= fields.Datetime.to_string(date1)
+          query = ' where  a.due_date between \'%s\' and  \'%s\' and a.type=\'sys_gen\'' %(self.date,date2) 
+          main_query='select a.name, b.name as customer, a.service_type, c.login as logged, a.due_date, d.name as contract from kts_service_management a left outer join res_partner b on a.partner_id=b.id left outer join res_users c on a.logged_by=c.id left outer join kts_contract_customer d on a.invcontract_id=d.id' 
+          
+              
+          main_query = main_query+query
+          if subquery:
+             main_query+=subquery    
+          self.env.cr.execute(main_query)
+          obj = self.env.cr.fetchall()   
+          for i in obj:  
+                   m={
+                      'name':i[0],
+                      'customer':i[1],
+                      'service_type':i[2],
+                      'logged':i[3],
+                      'due_date':i[4],
+                      'contract':i[5],
+                     }
+                   lines.append(m)
+          return lines     
+
+    def after_sale_service_status_report(self):
+        lines=[]
+        move_lines=self.env['kts.service.management'].search([('type','=','report_customer'),('due_date','>=',self.date_start),('due_date','<=',self.date_stop)])               
+        
+        for line in move_lines:
+            lines.append({
+                          'service':line.name,
+                          'customer':line.partner_id.name,
+                          'assign':line.assigned_to.name if line.assigned_to else '',
+                          'status':line.state
+                          })
+        return lines    
+
+class kts_sale_reports_service(models.Model):
+    _inherit='kts.sale.reports'
+    def get_move_lines(self):
+         move_obj=[]
+         ret=super(kts_sale_reports_service, self).get_move_lines()
+         if self.report_type =='product_contract_status_report':     
+            move_obj = self.product_contract_status_report()
+         elif self.report_type =='product_contract_expire_status_report':
+               move_obj = self.product_contract_expire_status_report()
+         elif ret:
+             return ret
+         return move_obj 
+    
+    def _get_report_type(self):
+        report_type=super(kts_sale_reports_service, self)._get_report_type()
+        report_type.append(('product_contract_status_report','Product Contract Status Report'),)
+        report_type.append(('product_contract_expire_status_report','Product Contract Expire Status Report'),)
+        
+        return report_type          
+    
+    report_type=fields.Selection(_get_report_type, string='Report Type')
+    
+    def to_print_sale(self, cr, uid, ids, context={}):
+        this = self.browse(cr, uid, ids, context=context)
+        ret=False
+        if this.report_type=='product_contract_status_report':
+             report_name='product_contract_status_report'    
+             report_name1='product_contract_status_report'
+        elif this.report_type=='product_contract_expire_status_report':
+             report_name='product_contract_expire_status_report'    
+             report_name1='product_contract_expire_status_report'
+        
+        else:
+            ret=super(kts_sale_reports_service, self).to_print_sale(cr, uid, ids, context=context)
+        
+        if ret:
+           return ret
+        else:
+           context.update({'this':this, 'uiModelAndReportModelSame':False})
+           return do_print_setup(self,cr, uid, ids, {'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},
+                False,False,context)
+    
+    def product_contract_status_report(self):
+          lines=[]
+          move_lines=self.env['product.template'].search([('contract_line_ids','!=',False)])
+          i=0
+          product=''
+          for line in move_lines:
+              for line1 in line.contract_line_ids: 
+                   i+=1
+                   if product != line.name:
+                       product=line.name
+                       product1=product
+                   else:
+                       product1=''    
+                   lines.append({
+                            
+                            'product':product1,
+                            'name':'',
+                            
+                        })
+                   lines.append({
+                            'sr_no':i,
+                            'product':'',
+                            'name':line1.contract_id.name,
+                            'val_duration_date':line1.val_duration_date,
+                            'default': 'Yes' if line1.default_contract else 'No'
+                        })
+          return lines
+    
+    def product_contract_expire_status_report(self):
+          lines=[]
+          move_lines=self.env['product.template'].search([('contract_line_ids','!=',False)])
+          i=0
+          product=''
+          for line in move_lines:
+              for line1 in line.contract_line_ids: 
+                   i+=1
+                   if product != line.name:
+                       product=line.name
+                       product1=product
+                   else:
+                       product1=''    
+                   
+                   lines.append({
+                            'sr_no':i,
+                            'product':product1,
+                            'name':line1.contract_id.name,
+                            'val_duration_date':line1.val_duration_date,
+                            'default': 'Yes' if line1.default_contract else 'No'
+                        })
+          return lines

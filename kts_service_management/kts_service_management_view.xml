@@ -520,6 +520,70 @@
                    </field>
                    </field>
         </record>
+        <record id="kts_service_report" model="ir.ui.view">
+           <field name="name">kts.service.report.form</field>
+            <field name="model">kts.service.report</field>
+            <field name="type">form</field>            
+            <field name="arch" type="xml">
+                <form name="Service Report">
+                    <header>              
+                         <button name="to_print_service" string="Print"  type="object"/>
+                    </header>
+                    <sheet>
+                        <group>
+                        
+                          <field name="name" />
+                          <field name="report_type" attrs="{'required':True}" />
+                          <field name="expire" attrs="{'required':[('report_type','in',('Service_due'))],'invisible':[('report_type','not in',('Service_due'))]}"/>
+                          <field name="date_start" attrs="{'required':[('report_type','in',('service_visit_report','material_consumtion_report','after_sale_service_status_report'))], 'invisible':[('report_type','not in',('service_visit_report','material_consumtion_report','after_sale_service_status_report'))]}"/>
+                          <field name="date_stop" attrs="{'required':[('report_type','in',('service_visit_report','material_consumtion_report','after_sale_service_status_report'))] , 'invisible':[('report_type','not in',('service_visit_report','material_consumtion_report','after_sale_service_status_report'))]}"/>
+                          <field name="service_type" widget="selection" attrs="{'required':[('report_type','in',('Service_due'))],'invisible':[('report_type','not in',('Service_due'))]}"/>
+                          <field name="contract_id" widget="selection" attrs="{'invisible':[('report_type','not in',('visit_material_history_report'))]}"/>
+                          <field name="partner_id" widget="selection" attrs="{'invisible':[('report_type','not in',('visit_material_history_report'))]}"/>
+                        </group>
+                    </sheet> 
+                </form>                                                
+             </field>
+        </record>
         
+        <record id="kts_service_report_tree_view" model="ir.ui.view">
+           <field name="name">kts.service.report.tree.view</field>
+            <field name="model">kts.service.report</field>
+            <field name="type">tree</field>            
+            <field name="arch" type="xml">
+              <tree string="Service Report">      
+                    <field name="name"/>
+                    <field name="expire"/>
+              </tree>      
+            </field>
+        </record> 
+         <record id="action_kts_service_report" model="ir.actions.act_window">
+            <field name="name">Service Report</field>
+            <field name="res_model">kts.service.report</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>           
+       </record>
+       <menuitem
+            id="menu_kts_service_report"
+            action="action_kts_service_report"
+            name="Service Report"
+            parent="kts_service_management.menu_kts_service_management"    
+            sequence="25"/> 
+        
+        <record id="kts_sales_report_product_contract_form" model="ir.ui.view">
+                  <field name="name">kts.sale.report.product.contract.form</field>
+                  <field name="model">kts.sale.reports</field>
+                  <field name="inherit_id" ref="ktssarg_reports.kts_sales_report_form"/>     
+                  
+                  <field name="arch" type="xml">
+                      <field name="date_start" position="attributes">
+                           <attribute name="attrs">{'required':[('report_type','not in',('product_contract_status_report'))],'invisible':[('report_type','in',('product_contract_status_report'))]}</attribute>
+                      </field>
+                  <field name="date_stop" position="attributes">
+                        <attribute name="attrs">{'required':[('report_type','not in',('product_contract_status_report'))],'invisible':[('report_type','in',('product_contract_status_report'))]}</attribute>
+                  </field>
+                  </field>
+        </record>
         
 </odoo>    

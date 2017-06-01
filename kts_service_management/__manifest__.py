@@ -2,7 +2,7 @@
 'name':'KTS SERVICE MANAGEMENT',
 'version':'1.0',
 'author':'KreativTech',
-'depends':['base','kts_contract_management'],
+'depends':['base','kts_contract_management','ktssarg_reports'],
 'data':[
         'security/kts_service_management_security.xml',
         'security/ir.model.access.csv',
