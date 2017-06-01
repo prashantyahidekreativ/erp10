@@ -974,25 +974,26 @@ class kts_sale_reports_service(models.Model):
     
     report_type=fields.Selection(_get_report_type, string='Report Type')
     
-    def to_print_sale(self, cr, uid, ids, context={}):
-        this = self.browse(cr, uid, ids, context=context)
+    def to_print_sale(self):
+        context={}
+        this = self.browse()
         ret=False
-        if this.report_type=='product_contract_status_report':
+        if self.report_type=='product_contract_status_report':
              report_name='product_contract_status_report'    
              report_name1='product_contract_status_report'
-        elif this.report_type=='product_contract_expire_status_report':
+        elif self.report_type=='product_contract_expire_status_report':
              report_name='product_contract_expire_status_report'    
              report_name1='product_contract_expire_status_report'
         
         else:
-            ret=super(kts_sale_reports_service, self).to_print_sale(cr, uid, ids, context=context)
+            ret=super(kts_sale_reports_service, self).to_print_sale()
         
         if ret:
            return ret
         else:
            context.update({'this':this, 'uiModelAndReportModelSame':False})
-           return do_print_setup(self,cr, uid, ids, {'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},
-                False,False,context)
+           return do_print_setup(self, {'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},
+                False,context)
     
     def product_contract_status_report(self):
           lines=[]
@@ -1044,3 +1045,239 @@ class kts_sale_reports_service(models.Model):
                             'default': 'Yes' if line1.default_contract else 'No'
                         })
           return lines
+class kts_contract_report(models.Model):
+    _name='kts.contract.report'
+    
+    def get_val_recs(self):
+        move_lines=[]
+        if self.report_type=='amc_end_register':
+           move_lines=self.amc_end_register()
+        elif self.report_type=='product_amc_register':       
+             move_lines=self.product_amc_register()
+        elif self.report_type=='product_end_register':       
+             move_lines=self.product_end_register()
+        elif self.report_type=='master_contract_report':       
+             move_lines=self.master_contract_report()
+        elif self.report_type=='contract_report':       
+             move_lines=self.contract_report()
+        
+        return move_lines
+   
+    def _get_report_type(self):
+        report_type=[]
+        report_type.append(('amc_end_register','AMC END Register'))
+        report_type.append(('product_amc_register','Product and AMC Register'))
+        report_type.append(('product_end_register','Product End Register'))
+        report_type.append(('master_contract_report','Master Contract Report'))
+        report_type.append(('contract_report','Contract Report'))
+        
+        return report_type
+    
+    name=fields.Char('Name')
+    date_start= fields.Date('Start Date',)
+    date_stop= fields.Date('End Date')
+    report_type=fields.Selection(_get_report_type, string='Report Type')
+    product_id = fields.Many2one('product.product', string='Product')
+    expire = fields.Selection([('monthly','Monthly'),('quat','Quarterly')],string="Expire On",default='monthly',)
+    team_id = fields.Many2one('crm.team', string='Sales Team')
+    sale_id=fields.Many2one('sale.order',string='Sale Order')
+    _defaults = {
+                       'out_format' : lambda *a: pdf_id,   
+                  }
+    @api.model
+    def update_name(self,vals):
+        expire=''
+        if vals.get('report_type'):
+           name = vals['report_type'].replace('_',' ')
+           date = fields.Datetime.now()
+           if vals.get('expire'):  
+              expire= 'quarterly' if vals['expire']=='quat' else vals['expire'] 
+           name = name.title() +' '+expire.title()+' '+date
+           vals.update({
+                     'name':name,
+                     })   
+           return vals
+    
+    @api.model
+    def create(self, vals):
+        self.update_name(vals)
+        return super(kts_contract_report, self).create(vals)
+    
+    @api.multi
+    def write(self, vals):
+        self.update_name(vals)
+        return super(kts_contract_report, self).write(vals)
+    
+    def to_print_contract(self):
+        context={}
+        this = self.browse() 
+        if self.report_type=='amc_end_register':
+            report_name= 'amc_end_register'    
+            report_name1='amc_end_register'
+        elif self.report_type=='product_amc_register':
+             report_name='product_amc_register'    
+             report_name1='product_amc_register'
+        elif self.report_type=='product_end_register':
+             report_name='product_end_register'    
+             report_name1='product_end_register' 
+        elif self.report_type=='master_contract_report':
+             report_name='master_contract_report'    
+             report_name1='master_contract_report'
+        elif self.report_type=='contract_report':
+             report_name='contract_report'    
+             report_name1='contract_report'
+       
+        
+        context.update({'this':this, 'uiModelAndReportModelSame':False})
+        return do_print_setup(self, {'name':report_name1, 'model':'kts.contract.report','report_name':report_name},
+                False,context)
+              
+    def amc_end_register(self): 
+          lines=[]
+          expire=self.expire
+          if expire=='monthly':
+             self.date_start=fields.Datetime.now()
+             date1=fields.Datetime.from_string(self.date_start)
+             date2=date1+relativedelta(months=1)
+             date2= fields.Datetime.to_string(date1)
+          elif expire=='quat':
+               self.date_start=fields.Datetime.now()
+               date1=fields.Datetime.from_string(self.date_start)
+               date2=date1+relativedelta(months=3)
+               date2= fields.Datetime.to_string(date1)
+     
+          query = ' where a.val_duration_date between \'%s\' and \'%s\' and a.type=\'amc\'' %(self.date_start,date2) 
+          if self.product_id:
+              query= query+' and a.product_id=%d ' %(self.product_id.id)
+          if self.team_id:
+              query= query+' and  a.team_id=%d ' %(self.team_id.id)
+          main_query='select a.name, b.name as team_name, a.val_duration_date, c.name, d.name, e.name from kts_contract_customer a left outer join crm_team b on a.team_id=b.id  left outer join product_template d on d.id=a.product_id left outer join res_partner c on c.id=a.partner_id left outer join sale_order e on e.id=a.origin'
+          main_query = main_query+query
+          self.env.cr.execute(main_query)
+          obj = self.env.cr.fetchall()   
+          for i in obj:  
+               m={
+                  'name':i[0],
+                  'team':i[1],
+                  'val_date':i[2],
+                  'customer':i[3],
+                  'product':i[4],
+                  'origin':i[5],
+                 }
+               lines.append(m)
+          return lines     
+      
+    def product_end_register(self):
+          lines=[]
+          expire=self.expire
+          if expire=='monthly':
+             self.date_start=fields.Datetime.now()
+             date1=fields.Datetime.from_string(self.date_start)
+             date2=date1+relativedelta(months=1)
+             date2= fields.Datetime.to_string(date1)
+          elif expire=='quat':
+               self.date_start=fields.Datetime.now()
+               date1=fields.Datetime.from_string(self.date_start)
+               date2=date1+relativedelta(months=3)
+               date2= fields.Datetime.to_string(date1)
+          
+          query = 'a.val_duration_date between \'%s\' and \'%s\' and a.type=\'warranty\'' %(self.date_start,date2) 
+          if self.product_id:
+              query= query+' and a.product_id=%d' %(self.product_id.id)
+          
+          if self.team_id:
+              query= query+' and  a.team_id=%d ' %(self.team_id.id)
+          
+          main_query='select a.name, b.name as team_name, a.val_duration_date, c.name, d.name, e.name from kts_contract_customer a left outer join crm_team b on a.team_id=b.id  left outer join product_template d on d.id=a.product_id left outer join res_partner c on c.id=a.partner_id left outer join sale_order e on e.id=a.origin   where '
+          main_query = main_query+query
+          self.env.cr.execute(main_query)
+          obj = self.env.cr.fetchall()   
+          for i in obj:  
+               m={
+                  'name':i[0],
+                  'team':i[1],
+                  'val_date':i[2],
+                  'customer':i[3],
+                  'product':i[4],
+                  'origin':i[5],
+                 }
+               lines.append(m)
+          return lines     
+      
+    def product_amc_register(self): 
+          lines=[]
+          self.date_start=fields.Datetime.now()
+          query = 'a.val_duration_date >= \'%s\''   %(self.date_start) 
+          if self.product_id:
+              query= query+' and a.product_id=%d' %(self.product_id.id)                  
+          
+          if self.team_id:
+              query= query+' and  a.team_id=%d ' %(self.team_id.id)
+          
+          main_query='select a.name, b.name as team_name, a.val_duration_date, c.name, d.name, e.name as origin, a.type from kts_contract_customer a left outer join crm_team b on a.team_id=b.id  left outer join product_template d on d.id=a.product_id left outer join res_partner c on c.id=a.partner_id  left outer join sale_order e on e.id=a.origin where '
+          main_query = main_query+query
+          self.env.cr.execute(main_query)
+          obj = self.env.cr.fetchall()   
+          for i in obj:  
+               m={
+                  'name':i[0],
+                  'team':i[1],
+                  'val_date':i[2],
+                  'customer':i[3],
+                  'product':i[4],
+                  'origin':i[5],
+                  'type':i[6]
+                 }
+               lines.append(m)
+          return lines
+      
+    def master_contract_report(self):
+          lines=[]
+          move_lines=self.env['kts.contract'].search([])
+          for line in move_lines:
+              lines.append({
+                            'name':line.name,
+                            'type':line.type,
+                            'val_duration':line.val_duration,
+                            'val_duration_date':line.val_duration_date,
+                            'proc_visit':line.no_proac_visit,
+                            'ins_visit':'Yes' if line.no_ins_visit else 'No',
+                            'due_days_ins':line.due_days,
+                            'free_visit':line.no_free_visit,
+                            'fre_proc_visit':line.fre_pro_visit, 
+                            
+                        })
+          
+          return lines
+    
+    def contract_report(self):
+          lines=[]
+          if self.sale_id:
+             move_lines=self.env['kts.contract.customer'].search([('origin','=',self.sale_id.id)])
+          else:
+              move_lines=self.env['kts.contract.customer'].search([])
+          for line in move_lines:
+              service=''
+              if line.state =='act':
+                  for line1 in line.service_ids:
+                      service+=line1.name+' '
+              else:
+                  service='There is no service for this contract.Please check contract is active or cancel' 
+              lines.append({
+                            'name':line.name,
+                            'type':line.type,
+                            'service':service,
+                            'customer':line.partner_id.name,
+                            'product':line.product_id.name,
+                            'serialno':line.lot_ids.name if line.lot_ids else '',
+                            'val_duration':line.val_duration,
+                            'val_duration_date':line.val_duration_date,
+                            'proc_visit':line.no_proac_visit,
+                            'ins_visit':'Yes' if line.no_ins_visit else 'No',
+                            'due_days_ins':line.due_days,
+                            'free_visit':line.no_free_visit,
+                            'fre_proc_visit':line.fre_pro_visit,     
+                        })
+          
+          return lines
+      

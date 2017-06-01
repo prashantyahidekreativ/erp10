@@ -585,5 +585,57 @@
                   </field>
                   </field>
         </record>
-        
+        <record id="kts_contract_report" model="ir.ui.view">
+           <field name="name">kts.contract.report.form</field>
+            <field name="model">kts.contract.report</field>
+            <field name="type">form</field>            
+            <field name="arch" type="xml">
+                <form name="Contract Report">
+                    <header>              
+                         <button name="to_print_contract" string="Print"  type="object"/>
+                    </header>
+                    <sheet>
+                        <group>
+                          <field name="name"/>
+                          <field name="report_type" attrs="{'required':True}"/>
+                          <field name="expire" widget="selection" attrs="{'required':[('report_type','not in',('master_contract_report','contract_report'))],'invisible':[('report_type','in',['contract_report','master_contract_report'])]}"/>
+                          <field name="product_id" attrs="{'invisible':[('report_type','in',['contract_report','master_contract_report'])] }"/>
+                          <field name="team_id" attrs="{'invisible':[('report_type','in',['contract_report','master_contract_report'])]}" />
+                          <field name="sale_id" attrs="{'invisible':[('report_type','not in',['contract_report'])]}"/>
+                        </group>
+                    </sheet> 
+                </form>                                                
+             </field>
+        </record>
+       
+        <record id="kts_contract_report_tree_view" model="ir.ui.view">
+           <field name="name">kts.contract.report.tree.view</field>
+            <field name="model">kts.contract.report</field>
+            <field name="type">tree</field>            
+            <field name="arch" type="xml">
+               <tree>
+                      
+                      <field name="name"/>
+                      <field name="report_type"/>
+                      <field name="expire" widget="selection" attrs="{'required':[('report_type','!=','product_amc_register')]}"/>
+                      <field name="product_id"/>
+                         
+               </tree>
+            </field>
+        </record>
+            
+        <record id="action_kts_contract_customer_report" model="ir.actions.act_window">
+            <field name="name">Contract Report</field>
+            <field name="res_model">kts.contract.report</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>           
+       </record>
+       
+       <menuitem
+            id="menu_kts_contract_customer_report"
+            action="action_kts_contract_customer_report"
+            name="Contract Report"
+            parent="kts_contract_management.menu_kts_contract_root"    
+            sequence="30"/> 
 </odoo>    

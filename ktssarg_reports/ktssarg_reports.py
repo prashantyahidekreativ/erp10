@@ -2033,7 +2033,7 @@ class kts_inventory_reports(models.Model):
                             'aa.categ_id, '
                             'case when COALESCE(cc.picking,\'NOT\')=\'NOT\' then bb.production_name else cc.picking end as document ' 
                             'from '
-                            '(select a.product_id, a.qty, a.reservation_id, b.raw_material_production_id, b.production_id, b.picking_id, c.name_template as product_name, d.categ_id '
+                            '(select a.product_id, a.qty, a.reservation_id, b.raw_material_production_id, b.production_id, b.picking_id, d.name as product_name, d.categ_id '
                             'from stock_quant a, stock_move b, product_product c, product_template d  where a.location_id=\'%s\' ' 
                             'and reservation_id is not null and a.reservation_id=b.id and a.product_id=c.id and c.product_tmpl_id=d.id) aa '
                             'left outer join '
@@ -2241,9 +2241,9 @@ class kts_inventory_reports(models.Model):
                           'sr_no':i,
                           'customer':(line.partner_id.name if line.partner_id.name else '')+('\n'+line.partner_id.street if line.partner_id.street else'')+(','+line.partner_id.city if line.partner_id.city else ''),
                           'date':line.date_done,
-                          'product':  self.get_product_name(line.move_lines_related),
-                          'qty': self.get_product_qty(line.move_lines_related),
-                          'uom':self.get_product_uom(line.move_lines_related),
+                          'product':  self.get_product_name(line.move_lines),
+                          'qty': self.get_product_qty(line.move_lines),
+                          'uom':self.get_product_uom(line.move_lines),
                           'receiptno':line.name,
                           'so':line.group_id.name,
                           })
@@ -2872,7 +2872,7 @@ class kts_mrp_reports(models.Model):
                             'as free_qty, '  
                             'aaa.categ_id '
                             'from(select aa.product_id, sum(aa.required_qty) as required_qty, aa.prod_name, aa.uom, sum(COALESCE(bb.reserved_qty,\'0\')) as reserved_qty, aa.categ_id  from '
-                            '(select a.id, b.id as move_id, b.product_id, b.product_uom_qty as required_qty, c.name_template as prod_name, d.name as uom, e.categ_id '
+                            '(select a.id, b.id as move_id, b.product_id, b.product_uom_qty as required_qty, e.name as prod_name, d.name as uom, e.categ_id '
                             'from mrp_production a, stock_move b, product_product c, product_uom d, product_template e '
                             'where to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\') between %s and %s and '
                             'a.id=b.raw_material_production_id and '
@@ -2920,10 +2920,10 @@ class kts_mrp_reports(models.Model):
         subquery=''
         if self.categ_id.id:
             subquery=' and c.categ_id= %s '%(self.categ_id.id)
-        self.env.cr.execute('select b.name_template, sum(a.product_uom_qty), sum(a.product_uom_qty*a.price_unit), c.categ_id '  
+        self.env.cr.execute('select c.name, sum(a.product_uom_qty), sum(a.product_uom_qty*a.price_unit), c.categ_id '  
                                  'from stock_move a, product_product b,  product_template c '  
                                  'where a.state = \'done\' and a.location_id=12 and a.location_dest_id=7 and a.product_id=b.id and b.product_tmpl_id=c.id and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') >= %s and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') <= %s '+subquery+   
-                                 'group by a.product_id, b.name_template, c.categ_id  ' 
+                                 'group by a.product_id, c.name, c.categ_id  ' 
                                  'Order by a.product_id, c.categ_id ',(date_start,date_stop)) 
         move_lines = self.env.cr.fetchall()
         i=0
@@ -3348,29 +3348,28 @@ class kts_sale_reports(models.Model):
                        'name':name,
                        })   
         return super(kts_sale_reports, self).write(vals)
+    
     @api.multi
     def to_print_sale(self):
-           self.ensure_one()
-           ret=False
-           if self.report_type=='total_so_summary':
-               report_name= 'total_so_summary'    
-               report_name1='Total Sale Order Summary'
-           elif self.report_type=='sale_price_variance':
-                report_name= 'sale_price_variance'    
-                report_name1='Sale Price Variance Report'  
-        
-           else:
-            ret=super(kts_inventory_reports_bin, self).to_print_inventory()
-        
-           if ret:
-              return ret
-           else:
-              return do_print_setup(self, {'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},
-                False,False)
-    
-           
-           return do_print_setup(self,{'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},
-                False,False)
+               self.ensure_one()
+               ret=False
+               if self.report_type=='total_so_summary':
+                   report_name= 'total_so_summary'    
+                   report_name1='Total Sale Order Summary'
+               elif self.report_type=='sale_price_variance':
+                    report_name= 'sale_price_variance'    
+                    report_name1='Sale Price Variance Report'  
+            
+               else:
+                 ret=super(kts_sale_reports,self).to_print_sale()
+            
+               if ret:
+                  return ret
+               else:
+                  return do_print_setup(self,{'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},False,False)
+            
+               
+               return do_print_setup(self,{'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},False,False)
     
     
     def sale_price_variance(self):
