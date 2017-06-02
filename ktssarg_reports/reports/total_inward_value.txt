@@ -1,0 +1,9 @@
+select 
+c.name, sum(a.product_uom_qty), sum(a.product_uom_qty*a.price_unit)  
+from stock_move a, product_product b,product_template c 
+where a.state = 'done' and a.location_id=8 and a.location_dest_id=12 and a.product_id=b.id  
+and 
+to_date(to_char(a.date,'DDMMYYYY'),'DDMMYYYY') >= %s
+and to_date(to_char(a.date,'DDMMYYYY'),'DDMMYYYY') <= %s  
+group by a.product_id, c.name  
+Order by a.product_id
