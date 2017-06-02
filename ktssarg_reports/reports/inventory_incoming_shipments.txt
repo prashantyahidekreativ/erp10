@@ -1,0 +1,25 @@
+select 
+aa.schedule_date,
+case when COALESCE(bb.partner,'NOT')='NOT' then cc.partner else bb.partner end as partner,
+COALESCE(bb.po,'NA') as po, 
+COALESCE(bb.po_date,'2000-01-01') as po_date, 
+aa.shipment,
+aa.product_name, 
+aa.product_qty,
+aa.uom  from 
+(select a.purchase_new_id, a.partner_id, a.name as shipment, f.name as product_name, b.product_qty, e.name as uom, to_date(to_char(b.date_expected,'DDMMYYYY'),'DDMMYYYY')
+as schedule_date from stock_picking a, stock_move b, stock_picking_type c, product_product d, product_uom e,product_template f
+where 
+a.id=b.picking_id and 
+a.picking_type_id=c.id and 
+c.code='incoming' and 
+b.product_id=d.id and 
+b.product_uom=e.id and 
+a.state not in ('done','draft','cancel') and
+b.state not in ('done','draft','cancel') and
+to_date(to_char(b.date_expected,'DDMMYYYY'),'DDMMYYYY') between %s and %s) aa 
+left outer join 
+(select a.id, b.name as partner, a.name as po, to_date(to_char(a.date_order,'DDMMYYYY'),'DDMMYYYY') as po_date  from purchase_order a, res_partner b where a.partner_id=b.id) bb on aa.purchase_new_id = bb.id 
+left outer join 
+(select name as partner, id from res_partner) cc on aa.partner_id=cc.id 
+Order by aa.schedule_date, case when COALESCE(bb.partner,'NOT')='NOT' then cc.partner else bb.partner end, COALESCE(bb.po,'NA') 
