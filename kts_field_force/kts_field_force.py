@@ -6,6 +6,11 @@ from odoo.exceptions import UserError
 import random
 import re
 import operator
+import pytz
+
+def get_time_now_obj(context):
+    tz=context.get('tz',False) if context else 'Asia/Kolkata'
+    return datetime.now(pytz.timezone(tz or 'Asia/Kolkata'))
 
 class kts_fieldforce_employee(models.Model):
     _name = "kts.fieldforce.employee"
@@ -18,15 +23,25 @@ class kts_fieldforce_employee(models.Model):
     name = fields.Char(related='employee.name', string='Name', readonly=True, store=True)
     last_location = fields.Char('Last Location', readonly=True)
     write_date = fields.Datetime('Last Seen', readonly=True)              
-    location_latitude =  fields.Float('Latitude', digits=(12,6),readonly=True)
-    location_longitude = fields.Float('Longitude', digits=(12,6),readonly=True)
-    # 'the_point': fields.geo_point('Last Location',nolabel=1,dim=2,srid=4326),
-    #the_point = fields.geo_point('Last Location',nolabel=1),
+    location_latitude =  fields.Float('Latitude', digits=(12,6))
+    location_longitude = fields.Float('Longitude', digits=(12,6))
     
     on_leave = fields.Boolean(compute='_get_leave_status',string='Employee Leave Status')                
     previous_locations = fields.One2many('kts.fieldforce.employee.location', 'employee_location_rel', 'Previous Locations', readonly=True)
     create_date = fields.Datetime('Last Seen', readonly=True)                
     device_state = fields.Boolean(related='employee_device.gprs_state',string='GPS Sate', readonly=True, store=True)
+    
+    @api.model
+    def create(self,vals):
+        if vals.get('location_latitude'):
+            lat = vals.get('location_latitude')
+        if vals.get('location_longitude'):
+            lon=vals.get('location_longitude')
+        loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon})        
+        device_id = self.env['kts.fieldforce.employee.device'].search([('employee','=',vals.get('employee_id'))])
+        vals.update({'employee_device':device_id.id})
+        return super(kts_fieldforce_employee, self).create(vals)    
+    
     
     @api.multi
     def write(self,vals):
@@ -60,14 +75,22 @@ class kts_fieldforce_employee_location(models.Model):
     write_date = fields.Datetime('Last Updated', readonly=True)                
     location_latitude = fields.Float('Latitude', digits=(12,6),readonly=True)
     location_longitude = fields.Float('Longitude', digits=(12,6),readonly=True)
-    # 'the_point': fields.geo_point('Last Location',nolabel=1,dim=2,srid=4326),
-    #the_point = fields.geo_point('Last Location',nolabel=1),
     employee_location_rel = fields.Many2one('kts.fieldforce.employee', 'Employee Track')
     on_leave = fields.Boolean(compute='_get_leave_status',string='Employee Leave Status')                
 
     create_date = fields.Datetime('Last Seen', readonly=True)                
     device_state = fields.Boolean(related='employee_device.gprs_state', string='GPS Sate', readonly=True, store=True)
     
+    @api.model
+    def create(self,vals):
+        res=super(kts_fieldforce_employee_location, self).create(vals)
+        if res:
+            self._cr.commit()
+        channel = '["%s","%s"]' %('erp10', 'gps.coords.set')
+        msg='this is test'
+        self.env['bus.bus'].sendone(channel, msg)
+        return res
+
     @api.multi
     def _get_leave_status(self):
         self.ensure_one()
@@ -129,24 +152,14 @@ class kts_fieldforce_employee_tracking_shift_line(models.Model):
     _name = 'kts.fieldforce.employee.tracking.shift.line'
     _rec_name = 'name'
     
-    employee= fields.Many2one('hr.employee', 'Employee', required=True)
-    name= fields.Char(related='employee.name', string='Name', readonly=True, store=True)
-    mobile_phone= fields.Char(related='employee.mobile_phone', string='Mobile No', readonly=True, store=True)
-    work_email= fields.Char(related='employee.work_email', string='Email Id', readonly=True, store=True)
-    job_id= fields.Many2one(related='employee.job_id',string='Position', store=True, readonly=True)
-    parent_id= fields.Many2one(related='employee.parent_id',string='Manager', store=True, readonly=True)  
-    device_id= fields.Many2one('kts.fieldforce.employee.device', 'Device Id',readonly=True)
-    device_state= fields.Boolean(related='device_id.active', string='Device Active', readonly=True, store=True)
-    on_leave= fields.Boolean(compute='_get_leave_status',string='Employee Leave Status')
-    current_track_frq= fields.Integer(compute='_get_current_tracking_frq',string='Current Tracking Frq.')
-    current_state= fields.Char(compute='_get_current_state', string='Tracking Shift')
-    field_shift_employee_rel= fields.Many2one('kts.fieldforce.employee.tracking.shift', 'Shift Employees')
-    
     @api.model
     def get_tracking_frequency(self,employee_id):
         employee=employee_id
-        if employee==None:
-            employee_id=self.env['hr.employee'].search([('user_id','=',self._uid)])[0]
+        employee_id1=False
+        if employee==0:
+            employee_id1=self.env['hr.employee'].search([('user_id','=',self._uid)])[0]
+        if employee_id1:
+            employee_id= employee_id1.id
         query='SELECT field_shift_employee_rel from kts_fieldforce_employee_tracking_shift_line where employee=%s'% str(employee_id)
         self._cr.execute(query)
         lines = self._cr.fetchall()  
@@ -203,7 +216,7 @@ class kts_fieldforce_employee_tracking_shift_line(models.Model):
         stop_hr=int(stop_hr)
         stop_mins=int(round(stop_mins,2))
                         
-        now=fields.Datetime.from_string(fields.Datetime.now())
+        now=get_time_now_obj(self._context)
         
         if start<=stop:
             if  time(start_hr,start_mins) <= now.time() <= time(stop_hr,stop_mins):        
@@ -216,32 +229,31 @@ class kts_fieldforce_employee_tracking_shift_line(models.Model):
             else:
                 office_hr=False
         return office_hr
-        
+    
     @api.multi
     def _get_current_tracking_frq(self):
-        if not self.ids:
-            return {}
-        
         res = {}
         for record in self:
-             state,frq=self.get_tracking_frequency(self.employee.id)            
+             state,frq=record.get_tracking_frequency(record.employee.id)            
+             record.current_track_frq = frq
              res[record.id]=frq
         return res
 
+    @api.multi
     def _get_current_state(self):
         if not self.ids:
             return {}
         
         res = {}
         for record in self:
-             state,frq=self.get_tracking_frequency(self.employee.id)            
+             state,frq=record.get_tracking_frequency(record.employee.id)            
+             record.current_state = state 
              res[record.id]=state
         return res
     
     
     @api.multi
     def _get_leave_status(self):
-        self.ensure_one()
         if self.employee:
             if self.employee.current_leave_state == 'validate':
                self.on_leave = True
@@ -249,4 +261,33 @@ class kts_fieldforce_employee_tracking_shift_line(models.Model):
             self.on_leave = False    
    
 
+    
+    
+    
+    employee= fields.Many2one('hr.employee', 'Employee', required=True)
+    name= fields.Char(related='employee.name', string='Name', readonly=True, store=True)
+    mobile_phone= fields.Char(related='employee.mobile_phone', string='Mobile No', readonly=True, store=True)
+    work_email= fields.Char(related='employee.work_email', string='Email Id', readonly=True, store=True)
+    job_id= fields.Many2one(related='employee.job_id',string='Position', store=True, readonly=True)
+    parent_id= fields.Many2one(related='employee.parent_id',string='Manager', store=True, readonly=True)  
+    device_id= fields.Many2one('kts.fieldforce.employee.device', 'Device Id',readonly=True)
+    device_state= fields.Boolean(related='device_id.active', string='Device Active', readonly=True, store=True)
+    on_leave= fields.Boolean(compute='_get_leave_status',string='Employee Leave Status')
+    current_track_frq= fields.Integer(compute='_get_current_tracking_frq',string='Current Tracking Frq.',)
+    current_state= fields.Char(compute='_get_current_state', string='Tracking Shift',)
+    field_shift_employee_rel= fields.Many2one('kts.fieldforce.employee.tracking.shift', 'Shift Employees')
+    
+    @api.model
+    def create(self,vals):
+        device=self.env['kts.fieldforce.employee.device'].search([('employee','=',vals['employee'])])
+        vals.update({'device_id':( device[0] if device else False)})        
+        return super(kts_fieldforce_employee_tracking_shift_line, self).create(vals)
+        
+    @api.multi
+    def write(self, vals):
+        if 'employee' in vals:
+            device=self.env['kts.fieldforce.employee.device'].search([('employee','=',vals['employee'])])
+            vals.update({'device_id':( device[0] if device else False)})         
+        return super(kts_fieldforce_employee_tracking_shift_line, self).write(vals)  
+    
         
