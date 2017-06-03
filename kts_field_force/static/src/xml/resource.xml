@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<template>
+  <t t-name="WidgetCoordinates">
+    <t t-log="{{latitude}}"/>
+    <iframe width="400" height="300"
+        
+        t-attf-src="https://maps.google.com/?ie=UTF8&amp;ll={{latitude}},{{longitude}}&amp;output=embed">
+    </iframe>
+    
+  </t>
+  <t t-name="gps_base_gmap_marker" style="height:500px;"> 
+        <div name="gmap" style="height:500px;" />
+    </t>
+    
+</template>
