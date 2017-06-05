@@ -95,12 +95,12 @@ class kts_fieldforce_employee_location(models.Model):
 
     @api.multi
     def _get_leave_status(self):
-        self.ensure_one()
-        if self.employee:
-            if self.employee.current_leave_state == 'validate':
-               self.on_leave = True
-        else:
-            self.on_leave = False    
+        for rec in self:
+           if rec.employee:
+              if rec.employee.current_leave_state == 'validate':
+                  rec.on_leave = True
+              else:
+                  rec.on_leave = False    
    
 
 class kts_fieldforce_employee_device(models.Model):     
@@ -282,14 +282,14 @@ class kts_fieldforce_employee_tracking_shift_line(models.Model):
     @api.model
     def create(self,vals):
         device=self.env['kts.fieldforce.employee.device'].search([('employee','=',vals['employee'])])
-        vals.update({'device_id':( device[0] if device else False)})        
+        vals.update({'device_id':( device.id if device else False)})        
         return super(kts_fieldforce_employee_tracking_shift_line, self).create(vals)
         
     @api.multi
     def write(self, vals):
         if 'employee' in vals:
             device=self.env['kts.fieldforce.employee.device'].search([('employee','=',vals['employee'])])
-            vals.update({'device_id':( device[0] if device else False)})         
+            vals.update({'device_id':( device.id if device else False)})         
         return super(kts_fieldforce_employee_tracking_shift_line, self).write(vals)  
     
         
