@@ -33,13 +33,15 @@ class kts_fieldforce_employee(models.Model):
     
     @api.model
     def create(self,vals):
+        if vals.get('employee_id'):
+           device_id = self.env['kts.fieldforce.employee.device'].search([('employee','=',vals.get('employee_id'))])
+           vals.update({'employee_device':device_id.id})
+        
         if vals.get('location_latitude'):
             lat = vals.get('location_latitude')
         if vals.get('location_longitude'):
             lon=vals.get('location_longitude')
-        loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon})        
-        device_id = self.env['kts.fieldforce.employee.device'].search([('employee','=',vals.get('employee_id'))])
-        vals.update({'employee_device':device_id.id})
+        loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':device_id.id,'employee_location_rel':self.id})        
         return super(kts_fieldforce_employee, self).create(vals)    
     
     
@@ -49,7 +51,7 @@ class kts_fieldforce_employee(models.Model):
             lat = vals.get('location_latitude')
         if vals.get('location_longitude'):
             lon=vals.get('location_longitude')
-        loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon})        
+        loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':self.employee_device.id,'employee_location_rel':self.id})        
         return super(kts_fieldforce_employee, self).write(vals)    
         
     
