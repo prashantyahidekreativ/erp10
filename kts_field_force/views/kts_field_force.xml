@@ -57,6 +57,7 @@
             <field name="arch" type="xml">
                 <form string="Employee">
                     <group>
+                       <group> 
                         <field name="employee" />
                         <field name="employee_device" />
                         <field name="write_date" />
@@ -64,6 +65,11 @@
                         <field name="last_location" />
                         <field name="location_latitude"/>
                         <field name="location_longitude"/>
+                        </group>
+                        <group>
+                        <field name="filter_date"/>
+                        <field name="live_track"/>
+                        </group>
                     </group>
 
                     <notebook >
@@ -115,6 +121,8 @@
                         <field name="write_date" />
                         <field name="device_state" />
                         <field name="last_location" />
+                        <field name="location_latitude"/>
+                        <field name="location_longitude"/>
                     </group>
 
                     <notebook>
@@ -136,6 +144,8 @@
                     <field name="write_date" />
                     <field name="last_location" />
                     <field name="device_state" />
+                    <field name="location_latitude"/>
+                    <field name="location_longitude"/>
                 </tree>
             </field>
         </record>

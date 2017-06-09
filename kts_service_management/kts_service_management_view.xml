@@ -638,4 +638,5 @@
             name="Contract Report"
             parent="kts_contract_management.menu_kts_contract_root"    
             sequence="30"/> 
+       
 </odoo>    

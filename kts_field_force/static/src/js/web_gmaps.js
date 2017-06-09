@@ -7,9 +7,6 @@ odoo.define('kts_field_force.web_gmaps', function(require){
 	var Model = require('web.Model');
 	var bus = require('bus.bus').bus;
 	var QWeb = core.qweb;
-	var map;
-	var cordlist=[];
-	var dataid;     
 	
 	var MyTest = common.FormWidget.extend({
 		
@@ -23,148 +20,169 @@ odoo.define('kts_field_force.web_gmaps', function(require){
             $.getScript('https://maps.googleapis.com/maps/api/js?key=AIzaSyB3ghpGMTrWuBg9qit3WH9_P1CvKL7Mrto&callback=init');           
             this.channel = JSON.stringify(["erp10", "gps.coords.set"]);                 
             bus.add_channel(this.channel);
-            bus.on('notification', this, this.on_ready1);
+            bus.on('notification', this, this.bus_notification);
             bus.start_polling();    
+            this.field_manager.on("field_changed:filter_date", this,  function() {
+                this.filter_field_set();
+                this.on_ready1();
+            });
         },
         
-        bus_notification: function(notifications) {
-        	console.log('Notification');
+        filter_field_set: function(){
+        	this.set("filter_date",this.field_manager.get_field_value("filter_date"));
+        },
+        
+        bus_notification: function(notification) {
+        	console.log(notification);
         	
+        	for (var i = 0; i < notification.length; i++) {
+                var channel = notification[i][0];
+                var message = notification[i][1];
+                var dict = JSON.parse(message);
+                if ((!this.get("filter_date")) or (this.field_manager.get_field_value('live_track'))){
+                    var latlng = new google.maps.LatLng(dict['lat'],dict['long']);
+                    var path = this.snappedPolyline.getPath();
+                    path.push(latlng);
+                  }
+            }
         },    
              
         
         render_map: function (self, cords){
-        	console.log('This is render map');
-        	console.log('global cords');
-        	console.log(cordlist);
         	var flightPlanCoordinates=[]
+        	var pathValues = [];
         	var div_map=self.$el[0]; 
        	    var map = new google.maps.Map(div_map, {
-               zoom: 8,
+               zoom: 15,
                center: new google.maps.LatLng(parseFloat(self.field_manager.get_field_value('location_latitude')),parseFloat(self.field_manager.get_field_value('location_longitude'))),
-               
+               mapTypeId: google.maps.MapTypeId.ROADMAP
              });
-       	 var marker = new google.maps.Marker({
+       	 
+       	   var marker = new google.maps.Marker({
              position: new google.maps.LatLng(parseFloat(self.field_manager.get_field_value('location_latitude')),parseFloat(self.field_manager.get_field_value('location_longitude'))),
              map: map,
-            });
-        	
+             
+       	   });
+        
        	 $.each(cords, function(index, data){
-       		    
         		flightPlanCoordinates.push({lat:parseFloat(data.location_latitude),lng:parseFloat(data.location_longitude)});
-        	    cordlist.push({lat:parseFloat(data.location_latitude),lng:parseFloat(data.location_longitude)});
+        		pathValues.push(parseFloat(data.location_latitude)+','+parseFloat(data.location_longitude));    
+        		
        	    });
-        	console.log('this is list of coords');
-        	console.log(flightPlanCoordinates);
-        	console.log('global cords2');
-        	console.log(cordlist);
-        	var flightPlanCoordinates1 = [
-        	                              {lat: 37.772, lng: -122.214},
-        	                              {lat: 21.291, lng: -157.821},
-        	                              {lat: -18.142, lng: 178.431},
-        	                              {lat: -27.467, lng: 153.027}
-        	                            ];
-        	 console.log(flightPlanCoordinates1);
-        	 self.flightPath = new google.maps.Polyline({
-        	                              path: flightPlanCoordinates,
-        	                              geodesic: true,
-        	                              strokeColor: '#FF0000',
-        	                              strokeOpacity: 1.0,
-        	                              strokeWeight: 2
-        	                            });
-        	                            
-            self.flightPath.setMap(map);
-            
-            return 
+       	
+       	 function snappedpts(pathValues1){
+       		return $.ajax({
+        		 url:'https://roads.googleapis.com/v1/snapToRoads', 
+        		 data:{ interpolate: true,
+                       key: 'AIzaSyB3ghpGMTrWuBg9qit3WH9_P1CvKL7Mrto',
+                       path: pathValues1.join('|'),    
+        	          }, 
+        	    type: 'GET',  
+        	    success:
+        	function(mdata) {
+        	     
+        	    }
+        	});   	    
+          	  
+       	 }
+       	 
+       	 var i,j,temp,chunk = 100;
+       	
+       	
+       	var snappedCoordinates1=[];
+       	for (i=0,j=pathValues.length; i<j; i+=chunk) {
+       		temp = pathValues.slice(i,i+chunk);
+       		snappedCoordinates1.push(snappedpts(temp)); 
+       	}
+       	
+       	$.when.apply(self, snappedCoordinates1).done(
+       	    function() {
+       	        console.log('In then')
+       	    	console.log(arguments);
+       	    var snappedCoordinates=[]; 
+       	    var placeIdArray=[];
+       	    for (var i = 0; i < arguments.length; i++) {
+       	     if (arguments[i][0]){  
+       	         var values = arguments[i][0]['snappedPoints'];
+       	    	 $.each(values, function(index, data2){
+   		             var latlng = new google.maps.LatLng(
+   		             data2.location.latitude,
+ 	                 data2.location.longitude);
+ 	                 snappedCoordinates.push(latlng);
+ 	                 placeIdArray.push(data2.placeId); 
+   		          });
+       	     }
+       	     else{
+       	    	var values = arguments[0]['snappedPoints'];
+      	    	 $.each(values, function(index, data2){
+  		             var latlng = new google.maps.LatLng(
+  		             data2.location.latitude,
+	                 data2.location.longitude);
+	                 snappedCoordinates.push(latlng);
+	                 placeIdArray.push(data2.placeId); 
+  		          });
+       	     break;
+       	     }
+       	    }
+       	 self.snappedPolyline = new google.maps.Polyline({
+  		    path: snappedCoordinates,
+  		    strokeColor: 'red',
+  		    strokeWeight: 5
+  		  });
+         self.snappedPolyline.setMap(map);
+       	});
+       	
+       	    
+                          
+            return ;
         },
         
-        
-        
-        
+                
         on_ready1:function(){
         	 
         	 var self = this;
+        	 if (this.get("filter_date")) {
+        		 var tmp = this.get("filter_date");
+        		 var date1=tmp+" 00:00:00";
+        		 var date2=tmp+" 23:59:59";
+
+        		 new Model('kts.fieldforce.employee.location')
+        		 .query([])
+                 .filter([["employee_location_rel", "=", self.field_manager.datarecord.id],['create_date','>=',date1],['create_date','<=',date2]])
+                 .all() 
+                 .then(function(result) { 
+                	 console.log('This is onready');
+              	     console.log(result);
+                	 self.render_map(self,result);
+                   
+                 }); 
+                  
+              
+        	 }
         	 
-        	 //var def = new $.Deferred();         	 
-          	 var flightPlanCoordinates = []
-          	 new Model('kts.fieldforce.employee.location').call('search_read',[[["employee_location_rel", "=", self.field_manager.datarecord.id]],[]]) 
+        	 else{
+        		 var now = new Date();
+        		 var tmp = now.toISOString().slice(0,10);
+        		 var date1=tmp+" 00:00:00";
+        		 var date2=tmp+" 23:59:59";
+        		 new Model('kts.fieldforce.employee.location').call('search_read',[[["employee_location_rel", "=", self.field_manager.datarecord.id],['create_date','>=',date1],['create_date','<=',date2]],[]]) 
                .then(function(result) { 
               	 console.log('This is onready');
             	 console.log(result);
               	 self.render_map(self,result);
-              	 //def.resolve(); 
+              	  
                  
                }); 
-               //def.done(self.test_fun());
-          	 dataid = self.field_manager.datarecord.id;   
-          	 setInterval(self.test_fun,3000); 
-        
+            
+        	 }
         },	
 
-              
- 
- 
-			
-     		
-		
-		
-//		start: function(field_manager, node) {
-//    	        this._super(field_manager, node);
-//    	        this.field_manager.on("field_changed:latitude_aux", this, this.display_map);
-//    	        this.field_manager.on("field_changed:longitude_aux", this, this.display_map);
-//    	        this.display_map();
-//    	      
-//    	   },
-//    	    display_map: function() {
-//    	    		this.$el.html(QWeb.render("WidgetCoordinates", {
-//    	            "latitude": this.field_manager.get_field_value("latitude_aux") || 0,
-//    	            "longitude": this.field_manager.get_field_value("longitude_aux") || 0,   
-//    	        }));
-//    	    }    
     	    
 	});
-	//core.form_widget_registry.add('mytest', MyTest);
+	
 	core.form_tag_registry.add('mytest', MyTest)
 	core.form_tag_registry.add('mylocation', MyLocation)
 	
 	return { MyTest:MyTest, };
-    //return MyTest
+
 });
-
-
-
-
-
-
-
-
-
-//odoo.define('gps_base.web_gmaps', function(require){
-//	var core = require('web.core');
-//	var data = require('web.data');
-//	var common = require('web.form_common');
-//    var Model = require('web.Model')
-//	var session = require('web.session');
-//    var utils = require('web.utils');
-//
-//    var Qweb = core.qweb
-//    
-//    var GpsWidgetTest =  common.FormWidget.extend({
-//    	    
-//        start: function() {
-//    		this._super.apply(this, arguments);
-//            this.field_manager.on("field_changed:latitude_aux", this, this.display_map);
-//            this.field_manager.on("field_changed:longitude_aux", this, this.display_map);
-//            this.display_map();
-//        },
-//        display_map: function() {
-//            this.$el.html(QWeb.render("WidgetCoordinates", {
-//                "latitude": this.field_manager.get_field_value("latitude_aux") || 0,
-//                "longitude": this.field_manager.get_field_value("longitude_aux") || 0,
-//            }));
-//        }
-//        
-//    }); 
-//   core.form_widget_registry.add('gps_base_gmap_marker2', GpsWidgetTest);
-//  
-//});

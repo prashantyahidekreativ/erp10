@@ -5,7 +5,7 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import random
 import re
-from odoo.addons.ktssarg_reports.ktssarg_reports import do_print_setup 
+
 class kts_disciplinary_details(models.Model):
     _name='kts.disciplinary.details'
     log_date=fields.Date(string='Date', copy=False,)
@@ -65,7 +65,8 @@ class kts_visit_details(models.Model):
     postpone_id = fields.Many2one('kts.postpone.reason',string='Postpone Reason')
     sign = fields.Binary('Signature', attachment=True)
     sign_name = fields.Char('Signature Name')
-    
+    assigned_date = fields.Datetime('Assined Date')
+    accepted_date = fields.Datetime('Accepted Date')
     @api.model
     def create(self, vals):
         if vals.get('service_management_id'):
@@ -130,11 +131,11 @@ class kts_visit_details(models.Model):
     
     @api.multi
     def action_assign(self):
-        self.write({'state':'assigned'})    
+        self.write({'state':'assigned','assigned_date':fields.Datetime.now()})    
     
     @api.multi
     def action_accepted(self):
-        self.write({'state':'accepted'})    
+        self.write({'state':'accepted','accepted_date':fields.Datetime.now()})    
     
     @api.multi
     def action_process(self):
@@ -770,30 +771,28 @@ class kts_service_report(models.Model):
     contract_id=fields.Many2one('kts.contract.customer',string='Contract')
     partner_id=fields.Many2one('res.partner',string='Customer',domain=[('parent_id','=',False)])
     
-    def to_print_service(self):
-        context={}
-        this = self.browse() 
-        context=context
-        if self.report_type == 'Service_due':
+    def to_print_service(self, cr, uid, ids, context={}):
+        this = self.browse(cr, uid, ids, context=context) 
+        if this.report_type == 'Service_due':
            report_name='Service_due'
            report_name1='Service Due Register'
-        elif self.report_type == 'service_visit_report':
+        elif this.report_type == 'service_visit_report':
             report_name='service_visit_report'
             report_name1='Service Visit Report'
-        elif self.report_type == 'material_consumtion_report':
+        elif this.report_type == 'material_consumtion_report':
             report_name='material_consumtion_report'
             report_name1='Material Consumtion Report'
-        elif self.report_type == 'after_sale_service_status_report':
+        elif this.report_type == 'after_sale_service_status_report':
             report_name='after_sale_service_status_report'
             report_name1='After Sale Service Status Report'
-        elif self.report_type == 'visit_material_history_report':
+        elif this.report_type == 'visit_material_history_report':
             report_name='visit_material_history_report'
             report_name1='Visit Material History Report'
             
         context.update({'this':this, 'uiModelAndReportModelSame':False})
         
-        return do_print_setup(self,{'name':report_name1, 'model':'kts.service.report','report_name':report_name},
-                False,context)
+        return do_print_setup(self,cr, uid, ids, {'name':report_name1, 'model':'kts.service.report','report_name':report_name},
+                False,False,context)
     
     def visit_material_history_report(self):
         lines=[]
@@ -974,26 +973,25 @@ class kts_sale_reports_service(models.Model):
     
     report_type=fields.Selection(_get_report_type, string='Report Type')
     
-    def to_print_sale(self):
-        context={}
-        this = self.browse()
+    def to_print_sale(self, cr, uid, ids, context={}):
+        this = self.browse(cr, uid, ids, context=context)
         ret=False
-        if self.report_type=='product_contract_status_report':
+        if this.report_type=='product_contract_status_report':
              report_name='product_contract_status_report'    
              report_name1='product_contract_status_report'
-        elif self.report_type=='product_contract_expire_status_report':
+        elif this.report_type=='product_contract_expire_status_report':
              report_name='product_contract_expire_status_report'    
              report_name1='product_contract_expire_status_report'
         
         else:
-            ret=super(kts_sale_reports_service, self).to_print_sale()
+            ret=super(kts_sale_reports_service, self).to_print_sale(cr, uid, ids, context=context)
         
         if ret:
            return ret
         else:
            context.update({'this':this, 'uiModelAndReportModelSame':False})
-           return do_print_setup(self, {'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},
-                False,context)
+           return do_print_setup(self,cr, uid, ids, {'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},
+                False,False,context)
     
     def product_contract_status_report(self):
           lines=[]
@@ -1045,6 +1043,7 @@ class kts_sale_reports_service(models.Model):
                             'default': 'Yes' if line1.default_contract else 'No'
                         })
           return lines
+      
 class kts_contract_report(models.Model):
     _name='kts.contract.report'
     
@@ -1108,29 +1107,28 @@ class kts_contract_report(models.Model):
         self.update_name(vals)
         return super(kts_contract_report, self).write(vals)
     
-    def to_print_contract(self):
-        context={}
-        this = self.browse() 
-        if self.report_type=='amc_end_register':
+    def to_print_contract(self, cr, uid, ids, context={}):
+        this = self.browse(cr, uid, ids, context=context) 
+        if this.report_type=='amc_end_register':
             report_name= 'amc_end_register'    
             report_name1='amc_end_register'
-        elif self.report_type=='product_amc_register':
+        elif this.report_type=='product_amc_register':
              report_name='product_amc_register'    
              report_name1='product_amc_register'
-        elif self.report_type=='product_end_register':
+        elif this.report_type=='product_end_register':
              report_name='product_end_register'    
              report_name1='product_end_register' 
-        elif self.report_type=='master_contract_report':
+        elif this.report_type=='master_contract_report':
              report_name='master_contract_report'    
              report_name1='master_contract_report'
-        elif self.report_type=='contract_report':
+        elif this.report_type=='contract_report':
              report_name='contract_report'    
              report_name1='contract_report'
        
         
         context.update({'this':this, 'uiModelAndReportModelSame':False})
-        return do_print_setup(self, {'name':report_name1, 'model':'kts.contract.report','report_name':report_name},
-                False,context)
+        return do_print_setup(self,cr, uid, ids, {'name':report_name1, 'model':'kts.contract.report','report_name':report_name},
+                False,False,context)
               
     def amc_end_register(self): 
           lines=[]
@@ -1151,7 +1149,7 @@ class kts_contract_report(models.Model):
               query= query+' and a.product_id=%d ' %(self.product_id.id)
           if self.team_id:
               query= query+' and  a.team_id=%d ' %(self.team_id.id)
-          main_query='select a.name, b.name as team_name, a.val_duration_date, c.name, d.name, e.name from kts_contract_customer a left outer join crm_team b on a.team_id=b.id  left outer join product_template d on d.id=a.product_id left outer join res_partner c on c.id=a.partner_id left outer join sale_order e on e.id=a.origin'
+          main_query='select a.name, b.name as team_name, a.val_duration_date, c.name, d.name_template, e.name from kts_contract_customer a left outer join crm_team b on a.team_id=b.id  left outer join product_product d on d.id=a.product_id left outer join res_partner c on c.id=a.partner_id left outer join sale_order e on e.id=a.origin'
           main_query = main_query+query
           self.env.cr.execute(main_query)
           obj = self.env.cr.fetchall()   
@@ -1188,7 +1186,7 @@ class kts_contract_report(models.Model):
           if self.team_id:
               query= query+' and  a.team_id=%d ' %(self.team_id.id)
           
-          main_query='select a.name, b.name as team_name, a.val_duration_date, c.name, d.name, e.name from kts_contract_customer a left outer join crm_team b on a.team_id=b.id  left outer join product_template d on d.id=a.product_id left outer join res_partner c on c.id=a.partner_id left outer join sale_order e on e.id=a.origin   where '
+          main_query='select a.name, b.name as team_name, a.val_duration_date, c.name, d.name_template, e.name from kts_contract_customer a left outer join crm_team b on a.team_id=b.id  left outer join product_product d on d.id=a.product_id left outer join res_partner c on c.id=a.partner_id left outer join sale_order e on e.id=a.origin   where '
           main_query = main_query+query
           self.env.cr.execute(main_query)
           obj = self.env.cr.fetchall()   
@@ -1214,7 +1212,7 @@ class kts_contract_report(models.Model):
           if self.team_id:
               query= query+' and  a.team_id=%d ' %(self.team_id.id)
           
-          main_query='select a.name, b.name as team_name, a.val_duration_date, c.name, d.name, e.name as origin, a.type from kts_contract_customer a left outer join crm_team b on a.team_id=b.id  left outer join product_template d on d.id=a.product_id left outer join res_partner c on c.id=a.partner_id  left outer join sale_order e on e.id=a.origin where '
+          main_query='select a.name, b.name as team_name, a.val_duration_date, c.name, d.name_template, e.name as origin, a.type from kts_contract_customer a left outer join crm_team b on a.team_id=b.id  left outer join product_product d on d.id=a.product_id left outer join res_partner c on c.id=a.partner_id  left outer join sale_order e on e.id=a.origin where '
           main_query = main_query+query
           self.env.cr.execute(main_query)
           obj = self.env.cr.fetchall()   

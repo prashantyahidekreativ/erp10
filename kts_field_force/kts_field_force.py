@@ -7,6 +7,8 @@ import random
 import re
 import operator
 import pytz
+import json
+import urllib
 
 def get_time_now_obj(context):
     tz=context.get('tz',False) if context else 'Asia/Kolkata'
@@ -25,12 +27,28 @@ class kts_fieldforce_employee(models.Model):
     write_date = fields.Datetime('Last Seen', readonly=True)              
     location_latitude =  fields.Float('Latitude', digits=(12,6))
     location_longitude = fields.Float('Longitude', digits=(12,6))
-    
     on_leave = fields.Boolean(compute='_get_leave_status',string='Employee Leave Status')                
-    previous_locations = fields.One2many('kts.fieldforce.employee.location', 'employee_location_rel', 'Previous Locations', readonly=True)
+    previous_locations = fields.One2many('kts.fieldforce.employee.location', 'employee_location_rel', 'Previous Locations')
     create_date = fields.Datetime('Last Seen', readonly=True)                
     device_state = fields.Boolean(related='employee_device.gprs_state',string='GPS Sate', readonly=True, store=True)
+    filter_date = fields.Date('Filter Date',default=fields.Datetime.now())
+    live_track = fields.Boolean('Live Track', default=False)
     
+    @api.one
+    def get_address(self,addr):
+            url = 'http://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=true' %(addr['location_latitude'],addr['location_longitude'])
+            try:
+                result = json.load(urllib.urlopen(url))
+                print result
+            except Exception, e:
+                raise UserError(_('Cannot contact geolocation servers. Please make sure that your internet connection is up and running (%s).') % e)
+            if result['status'] != 'OK':
+                return False
+        
+            try:
+                return result['results'][0]['formatted_address']
+            except (KeyError, ValueError):
+                return False
     @api.model
     def create(self,vals):
         if vals.get('employee_id'):
@@ -41,7 +59,10 @@ class kts_fieldforce_employee(models.Model):
             lat = vals.get('location_latitude')
         if vals.get('location_longitude'):
             lon=vals.get('location_longitude')
-        loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':device_id.id,'employee_location_rel':self.id})        
+        if vals.get('location_latitude') and vals.get('location_longitude'):
+            addr = self.get_address({'location_latitude':lat,'location_longitude':lon})
+            vals.update({'last_location':addr[0].encode('UTF8')})      
+            loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':device_id.id,'employee_location_rel':self.id,'last_location':addr[0].encode('UTF8')})        
         return super(kts_fieldforce_employee, self).create(vals)    
     
     
@@ -51,9 +72,14 @@ class kts_fieldforce_employee(models.Model):
             lat = vals.get('location_latitude')
         if vals.get('location_longitude'):
             lon=vals.get('location_longitude')
-        loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':self.employee_device.id,'employee_location_rel':self.id})        
+        if vals.get('location_latitude') and vals.get('location_longitude'):
+            addr = self.get_address({'location_latitude':lat,'location_longitude':lon})
+            vals.update({'last_location':addr[0].encode('UTF8')})      
+            loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':self.employee_device.id,'employee_location_rel':self.id,'last_location':addr[0].encode('UTF8')})        
         return super(kts_fieldforce_employee, self).write(vals)    
         
+    
+    
     
     @api.multi
     def _get_leave_status(self):
@@ -68,7 +94,7 @@ class kts_fieldforce_employee(models.Model):
 class kts_fieldforce_employee_location(models.Model):
     _name = 'kts.fieldforce.employee.location'
     _rec_name = 'last_location'
-    _order = "last_location desc"    
+    _order = "create_date desc"    
     
     employee_device = fields.Many2one('kts.fieldforce.employee.device', 'Device', readonly=False)
     employee = fields.Many2one(related='employee_device.employee',string='Employee', store=True, readonly=True)
@@ -79,7 +105,6 @@ class kts_fieldforce_employee_location(models.Model):
     location_longitude = fields.Float('Longitude', digits=(12,6),readonly=True)
     employee_location_rel = fields.Many2one('kts.fieldforce.employee', 'Employee Track')
     on_leave = fields.Boolean(compute='_get_leave_status',string='Employee Leave Status')                
-
     create_date = fields.Datetime('Last Seen', readonly=True)                
     device_state = fields.Boolean(related='employee_device.gprs_state', string='GPS Sate', readonly=True, store=True)
     
@@ -89,7 +114,8 @@ class kts_fieldforce_employee_location(models.Model):
         if res:
             self._cr.commit()
         channel = '["%s","%s"]' %('erp10', 'gps.coords.set')
-        msg='this is test'
+        msg='{"employee_device":"%s","lat":"%s","long":"%s"}' %(vals.get('employee_device'),vals.get('location_latitude'),vals.get('location_longitude'))
+        
         self.env['bus.bus'].sendone(channel, msg)
         return res
 
