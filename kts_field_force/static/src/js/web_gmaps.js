@@ -46,7 +46,7 @@ odoo.define('kts_field_force.web_gmaps', function(require){
                 var channel = notification[i][0];
                 var message = notification[i][1];
                 var dict = JSON.parse(message);
-                var d1=new Date(y,m,d);
+                var d1=new Date().toISOString().slice(0,10);
                 var filterdate = new Date(this.get("filter_date"));
                 if (filterdate == d1 && this.field_manager.get_field_value('live_track')){
                     var latlng = new google.maps.LatLng(dict['lat'],dict['long']);
