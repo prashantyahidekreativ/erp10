@@ -132,11 +132,11 @@ class kts_visit_details(models.Model):
     @api.multi
     def action_assign(self):
         self.write({'state':'assigned','assigned_date':fields.Datetime.now()})    
-    
+        return True
     @api.multi
     def action_accepted(self):
         self.write({'state':'accepted','accepted_date':fields.Datetime.now()})    
-    
+        return True
     @api.multi
     def action_process(self):
         self.write({'state':'in_progress','start_time':fields.Datetime.now()})    

@@ -29,7 +29,14 @@ odoo.define('kts_field_force.web_gmaps', function(require){
         },
         
         filter_field_set: function(){
-        	this.set("filter_date",this.field_manager.get_field_value("filter_date"));
+        	if (! this.field_manager.get_field_value('live_track')){
+        	  this.set("filter_date",this.field_manager.get_field_value("filter_date"));
+        	}
+        	else{
+        		var now = new Date();
+       		    var tmp = now.toISOString().slice(0,10);
+        		this.set("filter_date",tmp);
+        	} 
         },
         
         bus_notification: function(notification) {
@@ -39,7 +46,9 @@ odoo.define('kts_field_force.web_gmaps', function(require){
                 var channel = notification[i][0];
                 var message = notification[i][1];
                 var dict = JSON.parse(message);
-                if ((!this.get("filter_date")) or (this.field_manager.get_field_value('live_track'))){
+                var d1=new Date(y,m,d);
+                var filterdate = new Date(this.get("filter_date"));
+                if (filterdate == d1 && this.field_manager.get_field_value('live_track')){
                     var latlng = new google.maps.LatLng(dict['lat'],dict['long']);
                     var path = this.snappedPolyline.getPath();
                     path.push(latlng);
@@ -49,7 +58,7 @@ odoo.define('kts_field_force.web_gmaps', function(require){
              
         
         render_map: function (self, cords){
-        	var flightPlanCoordinates=[]
+        	var markerdata=[];
         	var pathValues = [];
         	var div_map=self.$el[0]; 
        	    var map = new google.maps.Map(div_map, {
@@ -58,18 +67,52 @@ odoo.define('kts_field_force.web_gmaps', function(require){
                mapTypeId: google.maps.MapTypeId.ROADMAP
              });
        	 
-       	   var marker = new google.maps.Marker({
+       	   var markermain = new google.maps.Marker({
              position: new google.maps.LatLng(parseFloat(self.field_manager.get_field_value('location_latitude')),parseFloat(self.field_manager.get_field_value('location_longitude'))),
              map: map,
              
        	   });
         
        	 $.each(cords, function(index, data){
-        		flightPlanCoordinates.push({lat:parseFloat(data.location_latitude),lng:parseFloat(data.location_longitude)});
+        		markerdata.push([parseFloat(data.location_latitude),parseFloat(data.location_longitude),data.write_date,data.last_location]);
         		pathValues.push(parseFloat(data.location_latitude)+','+parseFloat(data.location_longitude));    
         		
        	    });
        	
+       	var infowindow = new google.maps.InfoWindow({
+            maxWidth: 160
+          });
+
+        var markers = new Array();
+        for (var i = 0; i < markerdata.length; i++) {  
+            var marker = new google.maps.Marker({
+              position: new google.maps.LatLng(markerdata[i][0], markerdata[i][1]),
+              map: map,
+              icon: 'http://maps.google.com/mapfiles/ms/micons/man.png',
+            });
+
+            markers.push(marker); 
+            google.maps.event.addListener(marker, 'click', (function(marker, i) {
+                return function() {
+                  infowindow.setContent(markerdata[i][2]+' At '+markerdata[i][3]);
+                  infowindow.open(map, marker);
+                }
+              })(marker, i));
+        }
+        
+        function autoCenter() {
+            //  Create a new viewpoint bound
+            var bounds = new google.maps.LatLngBounds();
+            //  Go through each...
+            for (var i = 0; i < markers.length; i++) {  
+      				bounds.extend(markers[i].position);
+            }
+            //  Fit these bounds to the map
+            map.fitBounds(bounds);
+          }
+        if (markers.length > 0){  
+        autoCenter();        
+        }
        	 function snappedpts(pathValues1){
        		return $.ajax({
         		 url:'https://roads.googleapis.com/v1/snapToRoads', 
@@ -181,7 +224,7 @@ odoo.define('kts_field_force.web_gmaps', function(require){
 	});
 	
 	core.form_tag_registry.add('mytest', MyTest)
-	core.form_tag_registry.add('mylocation', MyLocation)
+	
 	
 	return { MyTest:MyTest, };
 

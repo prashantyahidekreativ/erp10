@@ -20,7 +20,7 @@
                 <form string="Employee Device">
                   <header>
                   
-                      <field name="state" widget="statusbar" statusbar_visible="draft,requested,approved,cancel"/>
+                  
                   </header>
                   
                   <sheet>  
