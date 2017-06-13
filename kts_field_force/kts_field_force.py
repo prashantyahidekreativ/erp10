@@ -151,7 +151,7 @@ class kts_fieldforce_employee_device(models.Model):
     def create_device(self, user_id, device_id):
         user_id = int(user_id)
         emp_id = self.env['hr.employee'].search([('user_id','=',user_id)])       
-        self.create({'employee':emp_id.id,'device_id':device_id,'user_id':user_id})
+        self.create({'employee':emp_id.id,'device_id':device_id,'user_id':user_id,'gprs_state':True})
         return True        
 
 

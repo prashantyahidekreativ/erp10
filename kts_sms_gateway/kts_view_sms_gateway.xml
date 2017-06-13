@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+    
+      <record id="sms_account_view_form_inherit_sms_frame_gupshup" model="ir.ui.view">
+          <field name="name">sms.account.view.form</field>
+          <field name="model">sms.account</field>
+          <field name="inherit_id" ref="sms_frame.sms_account_view_form"/>
+          <field name="arch" type="xml">
+              <xpath expr="//h2[@id='gatewayhook']" position="after">
+                 <!--   <div attrs="{'invisible': [('gateway_model', '!=', 'sms.gateway.gupshup')]}"> -->
+              <group>
+              
+                      <field name="username"/>
+                      <field name="password"/>
+                      <field name="mask"/>
+              </group>
+                  
+              </xpath>
+          </field>
+      </record>
+      
+      
+      
+        <record id="kts_msg_template_form_view" model="ir.ui.view">
+           <field name="name">kts.msg.template.view.form</field>
+            <field name="model">kts.msg.template</field>
+            <field name="type">form</field>            
+            <field name="arch" type="xml">
+                <form name="SMS Template">
+                    <sheet>
+                        <group>
+                          <field name="name"/>
+                          <field name="msg"/>
+                          <field name="model_id"/>
+                          <field name="state"/>
+                          <field name="partner"/>
+                          <field name="payment_mode"/>
+                        </group>
+                    </sheet> 
+                </form>                                                
+             </field>
+        </record>
+        
+       <record id="kts_msg_template_tree_view" model="ir.ui.view">
+           <field name="name">kts.msg.template.view.tree</field>
+            <field name="model">kts.msg.template</field>
+            <field name="type">tree</field>            
+            <field name="arch" type="xml">
+             <tree string="SMS Template">      
+                    <field name="name"/>
+                    <field name="model_id"/>
+                    <field name="state"/>
+                    <field name="msg"/>
+                    <field name="partner"/>
+              </tree>      
+            </field>
+        </record> 
+        
+        <record id="action_kts_msg_template" model="ir.actions.act_window">
+            <field name="name">SMS Template</field>
+            <field name="res_model">kts.msg.template</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>           
+       </record>
+       <menuitem
+            id="menu_kts_msg_template"
+            action="action_kts_msg_template"
+            name="SMS Template"
+            parent="kts_service_management.menu_kts_service_management"    
+            sequence="30"/> 
+        <record id="kts_view_sale_order_sms_form" model="ir.ui.view">
+            <field name="name">kts.sale.order.sms.form</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>   
+          <field name="arch" type="xml">
+            <field name="payment_term_id" position="after">
+                 
+               <field name="sms_send"/>
+               
+            </field>                
+          </field>
+        </record>
+        <record id="kts_view_account_invoice_customer_sms_form" model="ir.ui.view">
+             <field name="name">kts.account.invoice.sms.customer.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_form"/>
+                   <field name="arch" type="xml">
+                   <field name="team_id" position="after">
+                   <field name="sms_send"/>
+                   </field>
+             </field>
+        </record>
+        <record id="kts_view_account_vendor_invoice_sms_form" model="ir.ui.view">
+             <field name="name">kts.account.invoice.vendor.sms.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_supplier_form"/>
+                   <field name="arch" type="xml">
+		                   <field name="partner_id" position="after">
+		                   <field name="sms_send"/>
+		                   </field> 
+                   </field>
+         </record>  
+         <record id="kts_view_payment_sms_form" model="ir.ui.view">
+          <field name="name">kts.payment.sms.form</field>
+          <field name="model">account.payment</field>
+          <field name="inherit_id" ref="account.view_account_payment_form"/>
+		          <field name="arch" type="xml">
+		              <field name="communication" position="after">
+		                 <field name="sms_send"/>
+		              </field>
+		          </field>
+          </record>  
+          
+          <record id="kts_view_stock_picking_form_sms_inherit1" model="ir.ui.view">
+            <field name="name">stock.picking.form.sms.inherit1</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>      
+                 <field name="arch" type="xml">
+                    <field name="origin" position="after">
+			                 <field name="sms_send"/>
+			        </field>
+			     </field>
+            </record>  
+         
+         <record id="view_kts_service_management_sms_form" model="ir.ui.view">
+            <field name="name">kts.service.management.sms.form</field>
+            <field name="model">kts.service.management</field>
+            <field name="inherit_id" ref="kts_service_management.view_kts_service_management_form"/>      
+                 <field name="arch" type="xml">
+                    <field name="vendor_id" position="after">
+                             <field name="sms_send"/>
+                    </field>
+                 </field>
+            </record>  
+         
+         <record id="view_kts_partner_sms_form" model="ir.ui.view">
+            <field name="name">res.kts.partner.sms.inherit</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='sales_purchases']/group/group/field[@name='customer']" position="after">
+                    <field name='sms_send' attrs="{'invisible': [('customer','=', False)]}" />
+                </xpath>
+            </field>
+        </record>
+        
+        <record id="kts_bulk_sms_form_view" model="ir.ui.view">
+           <field name="name">kts.bulk.sms.form</field>
+            <field name="model">kts.bulk.sms</field>
+            <field name="type">form</field>            
+            <field name="arch" type="xml">
+                <form name="BULK SMS">
+                    <header>
+                        <button name="action_send_sms" string="Send Bulk SMS" type="object"/>
+                    </header>
+                    <sheet>
+                        <group>
+                          <field name="name"/>
+                          </group>
+                    </sheet>
+               <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+                 
+                </form>                                                
+             </field>
+        </record>
+        
+       <record id="kts_bulk_sms_tree_view" model="ir.ui.view">
+           <field name="name">kts.bulk.sms.view.tree</field>
+            <field name="model">kts.bulk.sms</field>
+            <field name="type">tree</field>            
+            <field name="arch" type="xml">
+             <tree string="Bulk SMS">      
+                    <field name="name"/>
+             </tree>      
+            </field>
+        </record> 
+        
+        <record id="action_kts_bulk_sms" model="ir.actions.act_window">
+            <field name="name">Bulk SMS</field>
+            <field name="res_model">kts.bulk.sms</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="target">current</field>           
+       </record>
+       
+       <menuitem
+            id="menu_kts_bulk_sms"
+            action="action_kts_bulk_sms"
+            name="Bulk SMS Debtor"
+            parent="account.menu_finance_entries"    
+            sequence="30"/> 
+                
+  </data>
+</openerp>

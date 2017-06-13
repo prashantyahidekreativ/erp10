@@ -67,6 +67,7 @@ class kts_visit_details(models.Model):
     sign_name = fields.Char('Signature Name')
     assigned_date = fields.Datetime('Assined Date')
     accepted_date = fields.Datetime('Accepted Date')
+    
     @api.model
     def create(self, vals):
         if vals.get('service_management_id'):
@@ -76,7 +77,7 @@ class kts_visit_details(models.Model):
             if visit_lines:
                 raise UserError(_('Check All visit lines are done/postpone/cancel to create new visit'))
             else:
-                vals.update({'state':'assigned'})
+                vals.update({'state':'assigned','assigned_date':fields.Datetime.now()})
         return super(kts_visit_details, self).create(vals)
     
     @api.multi
@@ -313,6 +314,18 @@ class kts_contract_customer_inv(models.Model):
                 service_obj.create(res1) 
         return ret     
     
+    def amc_print(self):
+        report_name= 'amc_contract'
+        name='AMC Contract'               
+        return do_print_setup(self,{'name':name, 'model':'kts.contract.customer','report_name':report_name},
+                False,self.partner_id.id)
+    
+    def get_val_recs(self):
+        so_line = self.origin.order_line
+        for line in so_line:
+             if line.product_id == self.product_id: price_unit=line.price_unit 
+             else: price_unit=False
+        return price_unit
    
 class kts_service_management(models.Model):
     _name='kts.service.management'

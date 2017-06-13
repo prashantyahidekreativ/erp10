@@ -70,19 +70,15 @@
             <field name="model">kts.visit.details</field>   
             <field name="arch" type="xml">
                 <tree string="Visit Details" create="false">
-                   <field name="visible_emp" invisible="1"/>
-                   <field name="emp_id" attrs="{'invisible': [('visible_emp', '==', True)]}"/>
-                   <field name="start_time"/>
+                  <field name="visible_emp" invisible="1"/>
+                  <field name="emp_id" />
+                  <field name="start_time"/>
                   <field name="end_time"/>
-                  <field name="note"/>
-                  <field name="attachment"/>
-                  
-                 
                   <field name="product_id"/>
                   <field name="product_unit"/>
                   <field name="product_price"/>                      
                   <field name="invoice_flag"/>
-                  
+                 <field name="state"/> 
                 </tree>        
             </field>
      </record>
@@ -202,7 +198,7 @@
                              <group name="left">
                                 <field name="name" attrs="{'readonly': [('state', 'not in', ('draft',))]}" required="1"/>
                                 <field name="service_id" readonly="1"/>
-                                <field name="partner_id" attrs="{'readonly': [('state', 'not in', ('draft',))]}"  domain="[('customer','=',True)]" context="{'search_default_customer':1, 'show_address': 1}"/>
+                                <field name="partner_id" attrs="{'readonly': [('state', 'not in', ('draft',))]}"  domain="[('customer','=',True),('parent_id','=',False)]" context="{'search_default_customer':1, 'show_address': 1}"/>
                                 <field name="end_customer_name" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
                                 <field name="end_customer_mob" attrs="{'readonly': [('state', 'not in', ('draft',))]}"/>
                      
@@ -247,7 +243,7 @@
     	                    		<field name="visit_line"  attrs="{'readonly': [('state', 'not in', ('accepted','in_process'))]}">
                     		           <tree string="Visit Lines"  delete="false">
                     		             <field name="visible_emp" invisible="1"/>
-                    		             <field name="emp_id" attrs="{'invisible': [('visible_emp', '!=', False)],}" required="1" />
+                    		             <field name="emp_id" attrs="{'invisible': [('visible_emp', '!=', False)],'readonly':[('state','not in',['draft','assigned','accepted'])]}" required="1" />
                                          <field name="start_time" />
                                          <field name="end_time" />
                                          <field name="note"/>
@@ -310,11 +306,11 @@
                  <sheet>
                         <group name="top">
                        	  <field name="visible_emp" invisible="1"/>
-                    	  <field name="emp_id" attrs="{'invisible': [('visible_emp', '!=', False)],'required': [('visible_emp', '=', False)]}" />		                  
+                    	  <field name="emp_id" attrs="{'invisible': [('visible_emp', '!=', False)],'required': [('visible_emp', '=', False)],'readonly':[('state','not in',['draft','assigned','accepted'])]}" />		                  
                     	  <field name="start_time" readonly="1"/>
 		                  <field name="end_time" readonly="1"/>
 		                  <field name="note" attrs="{'readonly':[('state','=','done')]}"/>
-		                  <field name="product_id"  attrs="{'readonly':[('state','=','done')]}"/>
+		                  <field name="product_id"  attrs="{'readonly':[('state','=','done')]}" string="Service Name"/>
 		                  <field name="product_unit" attrs="{'readonly':[('state','=','done')]}"/>
 		                  <field name="product_price" attrs="{'readonly':[('state','=','done')]}"/>
 		                
@@ -332,6 +328,12 @@
      	</record>
         
         
+       <record id="action_kts_visit_details" model="ir.actions.act_window">
+            <field name="name">Visit Details</field>
+            <field name="res_model">kts.visit.details</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree</field>           
+       </record>
                 
        
        <menuitem
@@ -379,6 +381,13 @@
             parent="menu_kts_service_management_configuration"    
             sequence="20"/>                             
        
+       <menuitem
+            id="menu_action_kts_visit_details"
+            name="Visit Details"
+            groups="kts_service_management.group_service_management_manager"
+            action="action_kts_visit_details"
+            parent="menu_kts_service_management"    
+            sequence="30"/>  
                                         
               
        <record id="kts_contract_customer_service_line_form" model="ir.ui.view">
