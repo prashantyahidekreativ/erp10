@@ -9,6 +9,8 @@ import operator
 import pytz
 import json
 import urllib
+import urllib2
+
 
 def get_time_now_obj(context):
     tz=context.get('tz',False) if context else 'Asia/Kolkata'
@@ -38,7 +40,7 @@ class kts_fieldforce_employee(models.Model):
     def get_address(self,addr):
             url = 'http://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=true' %(addr['location_latitude'],addr['location_longitude'])
             try:
-                result = json.load(urllib.urlopen(url))
+                result = json.load(urllib2.urlopen(url))
                 print result
             except Exception, e:
                 raise UserError(_('Cannot contact geolocation servers. Please make sure that your internet connection is up and running (%s).') % e)
