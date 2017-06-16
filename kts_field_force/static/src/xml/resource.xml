@@ -11,5 +11,8 @@
   <t t-name="gps_base_gmap_marker" style="height:500px;"> 
         <div name="gmap" style="height:500px;" />
     </t>
-    
+   
+   <t t-name="gps_base_gmap_marker1" style="height:500px;"> 
+        <div name="gmap1" style="height:500px;" />
+    </t>  
 </template>

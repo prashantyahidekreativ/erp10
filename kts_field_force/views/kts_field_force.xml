@@ -65,10 +65,11 @@
                         <field name="last_location" />
                         <field name="location_latitude"/>
                         <field name="location_longitude"/>
-                        </group>
-                        <group>
                         <field name="filter_date"/>
                         <field name="live_track"/>
+                        </group>
+                        <group col="6">
+                        <mytest1 id="mytest1" lat="latitude_aux" lng="longitude_aux"/>
                         </group>
                     </group>
 
@@ -81,6 +82,10 @@
                         <page string="Previous Locations">
                             <field name="previous_locations"  nolabel="1"/>
                         </page>                            
+                        <page string="Live Track">
+                           <mytest2 id="mytest2" lat="latitude_aux" lng="longitude_aux"/>
+                        
+                        </page>
                     </notebook>
                 </form>
             </field>

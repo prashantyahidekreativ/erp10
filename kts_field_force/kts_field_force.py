@@ -16,6 +16,10 @@ def get_time_now_obj(context):
     tz=context.get('tz',False) if context else 'Asia/Kolkata'
     return datetime.now(pytz.timezone(tz or 'Asia/Kolkata'))
 
+class kts_fieldforce_stock_location(models.Model):
+    _inherit='stock.location'
+    emp_id = fields.Many2one('hr.employee','Employee')
+
 class kts_fieldforce_employee(models.Model):
     _name = "kts.fieldforce.employee"
     _rec_name = 'last_location'
@@ -41,7 +45,7 @@ class kts_fieldforce_employee(models.Model):
             url = 'http://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=true' %(addr['location_latitude'],addr['location_longitude'])
             try:
                 result = json.load(urllib2.urlopen(url))
-                print result
+               
             except Exception, e:
                 raise UserError(_('Cannot contact geolocation servers. Please make sure that your internet connection is up and running (%s).') % e)
             if result['status'] != 'OK':
@@ -70,6 +74,7 @@ class kts_fieldforce_employee(models.Model):
     
     @api.multi
     def write(self,vals):
+        
         if vals.get('location_latitude'):
             lat = vals.get('location_latitude')
         if vals.get('location_longitude'):
@@ -78,6 +83,8 @@ class kts_fieldforce_employee(models.Model):
             addr = self.get_address({'location_latitude':lat,'location_longitude':lon})
             vals.update({'last_location':addr[0].encode('UTF8')})      
             loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':self.employee_device.id,'employee_location_rel':self.id,'last_location':addr[0].encode('UTF8')})        
+        if vals.get('employee_id'):
+            del vals['employee_id'] 
         return super(kts_fieldforce_employee, self).write(vals)    
         
     
@@ -152,6 +159,7 @@ class kts_fieldforce_employee_device(models.Model):
         user_id = int(user_id)
         emp_id = self.env['hr.employee'].search([('user_id','=',user_id)])       
         self.create({'employee':emp_id.id,'device_id':device_id,'user_id':user_id,'gprs_state':True})
+        self.env['stock.location'].create({'name':emp_id.name,'usage':'internal','location_id':11,'emp_id':emp_id.id})
         return True        
 
 
@@ -289,11 +297,6 @@ class kts_fieldforce_employee_tracking_shift_line(models.Model):
                self.on_leave = True
         else:
             self.on_leave = False    
-   
-
-    
-    
-    
     employee= fields.Many2one('hr.employee', 'Employee', required=True)
     name= fields.Char(related='employee.name', string='Name', readonly=True, store=True)
     mobile_phone= fields.Char(related='employee.mobile_phone', string='Mobile No', readonly=True, store=True)
@@ -319,5 +322,135 @@ class kts_fieldforce_employee_tracking_shift_line(models.Model):
             device=self.env['kts.fieldforce.employee.device'].search([('employee','=',vals['employee'])])
             vals.update({'device_id':( device.id if device else False)})         
         return super(kts_fieldforce_employee_tracking_shift_line, self).write(vals)  
+
+class kts_fieldforce_visit_details(models.Model):
+    _inherit='kts.visit.details'
     
+    @api.multi
+    def consume_product(self):
+        self.ensure_one()
+        location_id = self.env['stock.location'].search([('emp_id','=',self.emp_id.id)])
+        
+        subquery='Order by aa.location_id, aa.product '
+        if location_id.id:
+              stock_location=location_id.id
+              subquery=' where aa.location_id=%s '%(stock_location)
+              subquery+='Order by aa.location_id, aa.product, aa.categ_id '
+               
+        self.env.cr.execute('select aa.qty, ' 
+                            'aa.reserve_qty, ' 
+                            'aa.product_id, ' 
+                            'aa.location_id, '
+                            'aa.uom_id, '
+                            'aa.uom, '
+                            'aa.location, '
+                            'aa.product, '
+                            'bb.prod_incoming_qty_done, '
+                            'aa.category, '
+                            'aa.categ_id '
+                            'from '
+                            '(select sum(COALESCE(a.qty,0)) as qty, ' 
+                            'sum(case when a.reservation_id is NULL then 0 else COALESCE(a.qty,0) end) as reserve_qty, '
+                            'a.product_id, ' 
+                            'a.location_id, '
+                            'd.id as uom_id, '
+                            'd.name as uom, '
+                            'e.name as location, '
+                            'c.name as product, '
+                            'f.name as category, '
+                            'c.categ_id '
+                            'from '
+                            'stock_quant a, '
+                            'product_product b, ' 
+                            'product_template c, '
+                            'product_uom d, '
+                            'stock_location e, '
+                            'product_category f '
+                            'where '
+                            'a.product_id=b.id and '
+                            'b.product_tmpl_id=c.id and '
+                            'c.uom_id=d.id and '
+                            'a.location_id=e.id and '
+                            'e.usage=\'internal\' and '
+                            'c.categ_id=f.id '
+                            'group by a.product_id, a.location_id, c.categ_id, e.name, d.id, d.name, c.name, f.name) aa '
+                            'left outer join '
+                            '(select '
+                            'a1.product_id, ' 
+                            'sum(a1.product_qty * a1.dfactor/a1.efactor) as prod_incoming_qty_done, ' 
+                            'a1.uom_id  ' 
+                            'from( '
+                            'select a.product_id, ' 
+                            'a.product_qty, '
+                            'd.factor as dfactor, e.factor as efactor, ' 
+                            'c.uom_id ' 
+                            'from  '
+                            'stock_move a, ' 
+                            'product_product b, ' 
+                            'product_template c, ' 
+                            'product_uom d, '
+                            'product_uom e, '
+                            'stock_picking g, ' 
+                            'stock_picking_type h ' 
+                            'where '
+                            'a.product_id=b.id and ' 
+                            'b.product_tmpl_id=c.id and ' 
+                            'c.uom_id=d.id and ' 
+                            'a.state in (\'assigned\') and ' 
+                            'a.product_uom=e.id and ' 
+                            'g.id=a.picking_id and ' 
+                            'g.picking_type_id=h.id and ' 
+                            'h.code=\'incoming\' and g.state=\'assigned\') a1 ' 
+                            'group by a1.product_id, a1.uom_id) bb on aa.product_id=bb.product_id '+subquery) 
+        
+        move_lines=self.env.cr.fetchall()
+        i=0
+        lines=[]
+        for line in move_lines:     
+             i+=1
+             free_qty=line[0]-line[1]            
+             if free_qty > 0:
+                lines.append({
+                          'id':line[2],
+                          'product':line[7],
+                          })        
+        
+        return {'products':lines}
+    
+    @api.multi
+    def create_picking_visit(self,vals):
+        self.ensure_one()
+        location_id = self.env['stock.location'].search([('emp_id','=',self.emp_id.id)])
+        service_obj = self.service_management_id
+        if vals.get('product'):
+            picking_type=self.env['stock.picking.type'].search([('service_flag','=',True)])
+            picking_id = self.env['stock.picking'].create({'picking_type_id':picking_type.id,'partner_id':service_obj.partner_id.id,'service_id':service_obj.id,'location_id':location_id.id})
+            for line in vals.get('product'):
+                 self.env['stock.move'].create({'product_id':line['product_id'],'picking_type_id':picking_type.id,'product_uom_qty':line['qty'],'picking_id':picking_id.id })
+        return True
+    
+    @api.multi
+    def return_product(self):
+        self.ensure_one()
+        product_ids=self.env['product.product'].search([('sale_ok','=','True'),('type','=','product')])
+        lines=[]
+        for line in product_ids:
+             lines.append({
+                          'id':line.id,
+                          'product':line.name,
+                          })        
+        
+        return {'products':lines}    
+       
+    @api.multi
+    def create_return_picking_visit(self,vals):
+        self.ensure_one()
+        location_id = self.env['stock.location'].search([('emp_id','=',self.emp_id.id)])
+        service_obj = self.service_management_id
+        if vals.get('product'):
+            picking_type=self.env['stock.picking.type'].search([('service_flag','=',True)])
+            picking_id = self.env['stock.picking'].create({'picking_type_id':picking_type.id,'partner_id':service_obj.partner_id.id,'service_id':service_obj.id,'location_id':location_id.id})
+            for line in vals.get('product'):
+                 self.env['stock.move'].create({'product_id':line['product_id'],'picking_type_id':picking_type.id,'product_uom_qty':line['qty'],'picking_id':picking_id.id })
+        return True
         
