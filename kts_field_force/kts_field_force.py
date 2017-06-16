@@ -10,6 +10,7 @@ import pytz
 import json
 import urllib
 import urllib2
+from itertools import izip
 
 
 def get_time_now_obj(context):
@@ -422,11 +423,27 @@ class kts_fieldforce_visit_details(models.Model):
         self.ensure_one()
         location_id = self.env['stock.location'].search([('emp_id','=',self.emp_id.id)])
         service_obj = self.service_management_id
-        if vals.get('product'):
-            picking_type=self.env['stock.picking.type'].search([('service_flag','=',True)])
-            picking_id = self.env['stock.picking'].create({'picking_type_id':picking_type.id,'partner_id':service_obj.partner_id.id,'service_id':service_obj.id,'location_id':location_id.id})
-            for line in vals.get('product'):
-                 self.env['stock.move'].create({'product_id':line['product_id'],'picking_type_id':picking_type.id,'product_uom_qty':line['qty'],'picking_id':picking_id.id })
+        picking_type=self.env['stock.picking.type'].search([('service_flag','=',True)])
+        picking_id = self.env['stock.picking'].create({
+                                                       'picking_type_id':picking_type.id,
+                                                       'partner_id':service_obj.partner_id.id,
+                                                       'service_id':service_obj.id,
+                                                       'location_id':location_id.id,
+                                                       'location_dest_id':picking_type.default_location_dest_id.id,
+                                                       'move_type':'direct'
+                                                       })
+        for product,qty in izip(vals[0],vals[1]):
+             obj = self.env['product.product'].browse(product)
+             self.env['stock.move'].create({'product_id':product,
+                                            'picking_type_id':picking_type.id,
+                                            'product_uom_qty':qty,
+                                            'picking_id':picking_id.id, 
+                                            'product_uom': obj.uom_id.id,
+                                            'location_id':location_id.id,
+                                            'location_dest_id':picking_type.default_location_dest_id.id,
+                                            'name':'visit picking'
+            
+                                            })
         return True
     
     @api.multi
@@ -445,12 +462,31 @@ class kts_fieldforce_visit_details(models.Model):
     @api.multi
     def create_return_picking_visit(self,vals):
         self.ensure_one()
-        location_id = self.env['stock.location'].search([('emp_id','=',self.emp_id.id)])
+        location_id = self.env['stock.location'].search([('usage','=','supplier')])
         service_obj = self.service_management_id
-        if vals.get('product'):
-            picking_type=self.env['stock.picking.type'].search([('service_flag','=',True)])
-            picking_id = self.env['stock.picking'].create({'picking_type_id':picking_type.id,'partner_id':service_obj.partner_id.id,'service_id':service_obj.id,'location_id':location_id.id})
-            for line in vals.get('product'):
-                 self.env['stock.move'].create({'product_id':line['product_id'],'picking_type_id':picking_type.id,'product_uom_qty':line['qty'],'picking_id':picking_id.id })
+        picking_type=self.env['stock.warehouse'].browse(1).in_type_id
+        picking_id = self.env['stock.picking'].create({
+                                                       'picking_type_id':picking_type.id,
+                                                       'partner_id':service_obj.partner_id.id,
+                                                       'service_id':service_obj.id,
+                                                       'location_id':location_id[0].id,
+                                                       'location_dest_id':picking_type.default_location_dest_id.id,
+                                                       'move_type':'direct'
+                                                       })
+        
+        for product,qty in izip(vals[0],vals[1]):
+             obj = self.env['product.product'].browse(product)
+             self.env['stock.move'].create({'product_id':product,
+                                            'picking_type_id':picking_type.id,
+                                            'product_uom_qty':qty,
+                                            'picking_id':picking_id.id, 
+                                            'product_uom': obj.uom_id.id,
+                                            'location_id':location_id[0].id,
+                                            'location_dest_id':picking_type.default_location_dest_id.id,
+                                            'name':'visit picking'
+            
+                                            })
+
+        
         return True
         
