@@ -421,6 +421,8 @@ class kts_fieldforce_visit_details(models.Model):
     @api.multi
     def create_picking_visit(self,vals):
         self.ensure_one()
+        if type(vals) != 'list':
+            vals=eval(vals)
         location_id = self.env['stock.location'].search([('emp_id','=',self.emp_id.id)])
         service_obj = self.service_management_id
         picking_type=self.env['stock.picking.type'].search([('service_flag','=',True)])
@@ -444,7 +446,7 @@ class kts_fieldforce_visit_details(models.Model):
                                             'name':'visit picking'
             
                                             })
-        return True
+        return {'key':True}
     
     @api.multi
     def return_product(self):
@@ -462,6 +464,8 @@ class kts_fieldforce_visit_details(models.Model):
     @api.multi
     def create_return_picking_visit(self,vals):
         self.ensure_one()
+        if type(vals) != 'list':
+           vals=eval(vals)
         location_id = self.env['stock.location'].search([('usage','=','supplier')])
         service_obj = self.service_management_id
         picking_type=self.env['stock.warehouse'].browse(1).in_type_id
@@ -488,5 +492,5 @@ class kts_fieldforce_visit_details(models.Model):
                                             })
 
         
-        return True
+        return {'key':True}
         
