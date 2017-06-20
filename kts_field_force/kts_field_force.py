@@ -414,6 +414,7 @@ class kts_fieldforce_visit_details(models.Model):
                 lines.append({
                           'id':line[2],
                           'product':line[7],
+                          'unit':line[5]
                           })        
         
         return {'products':lines}
@@ -457,6 +458,7 @@ class kts_fieldforce_visit_details(models.Model):
              lines.append({
                           'id':line.id,
                           'product':line.name,
+                          'unit':line.uom_id.name
                           })        
         
         return {'products':lines}    
