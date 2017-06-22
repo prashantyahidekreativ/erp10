@@ -9,11 +9,12 @@
             <field name="arch" type="xml">
             <xpath expr="//page[@name='accounting']/group/group[@name='accounting_entries']" position="after">
                <group string="GST Details" name="gst_details">
-               <field name="gstin"/>
-               <field name="gstin_file"/>
               
-                <field name="uid"/>
-               <field name="gdi"/>
+               <field name="partner_type" widget="radio"/>
+               <field name="gstin" attrs="{'invisible': [('partner_type', '!=', 'gst')],'required':[('partner_type','=','gst')]}"/>
+               <field name="uid" attrs="{'invisible': [('partner_type', '!=', 'uid')],'required':[('partner_type','=','uid')]}"/>
+               <field name="gdi" attrs="{'invisible': [('partner_type', '!=', 'gdi')],'required':[('partner_type','=','gdi')]}"/>
+               <field name="file" attrs="{'invisible': [('partner_type', 'in', ('no_app','gdi'))]}"/>
                 
               </group> 
                </xpath>      
@@ -186,10 +187,10 @@
 		               <group>   
 		                        <field name="sgst_in_acc_id"/>
 		                        <field name="sgst_out_acc_id"/>
-		                        <field name="gst_adv_in_acc_id"/>
-		                        <field name="gst_adv_out_acc_id"/>
-		                        <field name="gst_paid_in_acc_id"/>
-		                        <field name="gst_paid_out_acc_id"/>
+		                        <field name="igst_adv_acc_id"/>
+		                        <field name="sgst_adv_acc_id"/>
+		                        <field name="cgst_adv_acc_id"/>
+		                        <field name="gst_paid_acc_id"/>
 		               </group>                 
                    </group>
                     </sheet>
@@ -220,15 +221,28 @@
             <field name="inherit_id" ref="account.view_tax_form"/>     
             <field name="arch" type="xml">
                <field name="type_tax_use" position="after">
-                 <field name="tax_type"/>                 
-                 <field name="igst_flag"/>                 
-                 <field name="sgst_flag"/>                 
-                 <field name="cgst_flag"/>                 
+                                                  
+                 <field name="gst_type"/>                 
+                 <field name="gst_account_code_id"/>                 
                                                                       
                  </field>
-                             
               </field>
-             </record>
-            
+      </record>
+      
+      <record id="kts_view_gst_account_configuration_form_extension" model="ir.ui.view">
+            <field name="name">kts.gst.account.config.setting.form.extension</field>
+            <field name="model">account.config.settings</field>
+            <field name="inherit_id" ref="account.view_account_config_settings"/>     
+            <field name="arch" type="xml">
+               <div name="invoice_taxes" position="inside">
+                   <div>
+                                                  
+                    <field name="gst_forced" class="oe_inline"/> 
+                    <label for="gst_forced"/>                                                 
+                   </div>
+              </div>
+              </field>
+      </record>
+          
   </data>
 </odoo>
