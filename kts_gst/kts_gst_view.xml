@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+     
+     <record id="kts_view_gst_partner" model="ir.ui.view">
+            <field name="name">kts.view.gst.partner.form</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>      
+            <field name="arch" type="xml">
+            <xpath expr="//page[@name='accounting']/group/group[@name='accounting_entries']" position="after">
+               <group string="GST Details" name="gst_details">
+               <field name="gstin"/>
+               <field name="gstin_file"/>
+              
+                <field name="uid"/>
+               <field name="gdi"/>
+                
+              </group> 
+               </xpath>      
+           </field>
+   </record>
+   
+   <record id="kts_view_gst_res_company" model="ir.ui.view">
+            <field name="name">kts.view.gst.res.company.form</field>
+            <field name="model">res.company</field>
+            <field name="inherit_id" ref="base.view_company_form"/>      
+            <field name="arch" type="xml">
+            <xpath expr="//page" position="after">
+               <page string="GST Details" name="gst">
+                  <group string="GST Details" name="gst_details">
+                  <field name="gstin"/>
+                  <field name="gstin_file"/>
+                  <field name="state_code"/>
+                  <field name="composition_flag"/>
+                  <field name="manufacturer_flag"/>
+                  
+                  </group> 
+              </page>
+               </xpath>      
+           </field>
+   </record>
+      
+   
+   <record id="view_kts_hsn_master_tree" model="ir.ui.view">
+            <field name="name">kts.hsn.master.tree</field>
+            <field name="model">kts.hsn.master</field>
+            <field name="arch" type="xml">
+                <tree string="HSN">
+                    <field name="name"/>
+                    <field name="hsn_code"/>
+                    <field name="gst_account_id"/>
+                    
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_kts_hsn_master_form" model="ir.ui.view">
+            <field name="name">kts.hsn.master.form</field>
+            <field name="model">kts.hsn.master</field>
+            <field name="arch" type="xml">
+                <form string="HSN">
+                    <sheet>
+                    <group>
+                        <field name="name"/> 
+                         <field name="hsn_code"/>
+                         <field name="gst_account_id"/>
+                    </group>
+                    </sheet>
+               </form>
+            </field>
+        </record>
+      
+      
+      <record id="action_kts_hsn_master" model="ir.actions.act_window">
+            <field name="name">HSN</field>
+            <field name="res_model">kts.hsn.master</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help"> Configure HSN For Product</field>
+        </record>
+
+        <menuitem 
+        action="action_kts_hsn_master" 
+        id="menu_kts_hsn_master" 
+        parent="sale.prod_config_main" 
+        sequence="10" 
+         /> 
+        
+        <record id="view_kts_gst_account_tree" model="ir.ui.view">
+            <field name="name">kts.gst.account.tree</field>
+            <field name="model">kts.gst.account</field>
+            <field name="arch" type="xml">
+                <tree string="GST Account">
+                    <field name="name"/>
+                    <field name="cgst"/>
+                    <field name="igst"/>
+                    <field name="sgst"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_kts_gst_account_form" model="ir.ui.view">
+            <field name="name">kts.gst.account.form</field>
+            <field name="model">kts.gst.account</field>
+            <field name="arch" type="xml">
+                <form string="GST Account">
+                    <sheet>
+                    <group>
+	                     <field name="name"/>
+	                    <field name="cgst"/>
+	                    <field name="igst"/>
+	                    <field name="sgst"/>          
+                   </group>
+                    </sheet>
+               </form>
+            </field>
+        </record>
+      
+      
+      <record id="action_kts_gst_account" model="ir.actions.act_window">
+            <field name="name">GST ACCOUNT</field>
+            <field name="res_model">kts.gst.account</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help"> Configure HSN For Product</field>
+        </record>
+
+        <menuitem 
+        action="action_kts_gst_account" 
+        id="menu_kts_gst_account" 
+        parent="sale.prod_config_main" 
+        sequence="15" 
+         /> 
+        
+        
+        <record id="kts_product_template_gst_view" model="ir.ui.view">
+	        <field name="name">kts.product.template.gst.view</field>
+	        <field name="model">product.template</field>
+	        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+	        <field name="arch" type="xml">
+	            <field name="uom_id" position="before">
+	            <field name="hsn_id"/>
+	            </field>            
+	        </field>
+       </record> 
+       <record id="kts_product_category_gst_view" model="ir.ui.view">
+            <field name="name">kts.product.category.gst.view</field>
+            <field name="model">product.category</field>
+            <field name="inherit_id" ref="product.product_category_form_view"/>
+            <field name="arch" type="xml">
+                <group name="first" position="after">
+                   <group string="GST" name="gst">
+                      <field name="hsn_id"/>
+                    </group>
+                </group>            
+            </field>
+       </record> 
+       
+       <record id="view_kts_gst_master_tree" model="ir.ui.view">
+            <field name="name">kts.gst.master.tree</field>
+            <field name="model">kts.gst.master</field>
+            <field name="arch" type="xml">
+                <tree string="GST Master">
+                    <field name="name"/>
+                    <field name="igst_in_acc_id"/>
+                    <field name="cgst_in_acc_id"/>
+                    <field name="sgst_in_acc_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_kts_gst_master_form" model="ir.ui.view">
+            <field name="name">kts.gst.master.form</field>
+            <field name="model">kts.gst.master</field>
+            <field name="arch" type="xml">
+                <form string="GST Master">
+                    <sheet>
+                    <group>
+                        <group>
+		                        <field name="name"/>
+		                        <field name="igst_in_acc_id"/>
+		                        <field name="igst_out_acc_id"/>
+		                        <field name="cgst_in_acc_id"/>
+		                        <field name="cgst_out_acc_id"/>
+		               </group> 
+		               <group>   
+		                        <field name="sgst_in_acc_id"/>
+		                        <field name="sgst_out_acc_id"/>
+		                        <field name="gst_adv_in_acc_id"/>
+		                        <field name="gst_adv_out_acc_id"/>
+		                        <field name="gst_paid_in_acc_id"/>
+		                        <field name="gst_paid_out_acc_id"/>
+		               </group>                 
+                   </group>
+                    </sheet>
+               </form>
+            </field>
+        </record>
+      
+      
+      <record id="action_kts_gst_master" model="ir.actions.act_window">
+            <field name="name">GST Master</field>
+            <field name="res_model">kts.gst.master</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help"> Configure GST Master</field>
+        </record>
+
+        <menuitem 
+        action="action_kts_gst_master" 
+        id="menu_kts_gst_master" 
+        parent="account.account_account_menu" 
+        sequence="15"
+        groups="account.group_account_manager" 
+         /> 
+       
+       <record id="kts_view_gst_account_tax_form_extension" model="ir.ui.view">
+            <field name="name">kts.gst.account.tax.form.extension</field>
+            <field name="model">account.tax</field>
+            <field name="inherit_id" ref="account.view_tax_form"/>     
+            <field name="arch" type="xml">
+               <field name="type_tax_use" position="after">
+                 <field name="tax_type"/>                 
+                 <field name="igst_flag"/>                 
+                 <field name="sgst_flag"/>                 
+                 <field name="cgst_flag"/>                 
+                                                                      
+                 </field>
+                             
+              </field>
+             </record>
+            
+  </data>
+</odoo>
