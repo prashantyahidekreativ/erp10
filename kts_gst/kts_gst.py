@@ -40,7 +40,7 @@ class kts_hsn_master(models.Model):
     _name='kts.hsn.master'
     name = fields.Char('Name')
     hsn_code = fields.Char('HSN Code')
-    gst_account_id = fields.Many2one('kts.gst.account')   
+    gst_account_id = fields.Many2one('kts.gst.account','GST Account Code')   
 
 class kts_gst_product_product(models.Model):
     _inherit='product.template'
