@@ -34,7 +34,7 @@
                   <field name="state_code"/>
                   <field name="composition_flag"/>
                   <field name="manufacturer_flag"/>
-                  
+                  <field name="gst_forced"/>
                   </group> 
               </page>
                </xpath>      
@@ -248,6 +248,83 @@
               </div>
               </field>
       </record>
-          
+      <record model="ir.ui.view" id="kts_gst_account_invoice_form">
+            <field name="name">KTS GST Account Invoice</field>
+            <field name="model">account.invoice</field>
+            <field name="inherit_id" ref="account.invoice_form"/>
+            <field name="arch" type="xml">
+                    
+                    <xpath expr="//field[@name='partner_id']" position="after">
+                       <field name="partner_invoice_id" />
+                       <field name="partner_state_code"/>
+                   </xpath>
+                   <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='product_id']" position="after">
+                         <field name="hsn_code"/>
+                         
+                   </xpath> 
+            </field>
+      </record>   
+       <record id="kts_view_gst_account_vendor_invoice_form" model="ir.ui.view">
+             <field name="name">kts.gst.account.invoice.vendor.form</field>
+             <field name="model">account.invoice</field>
+             <field name="inherit_id" ref="account.invoice_supplier_form"/>
+                   <field name="arch" type="xml">
+                   <field name="partner_id" position="after">
+                        <field name="partner_invoice_id"/>
+                        <field name="partner_shipping_id"/>
+                        <field name="partner_state_code"/>     
+                   </field>  
+                   
+                   </field>
+       </record>
+       
+       <record id="kts_view_gst_account_fiscal_position_form" model="ir.ui.view">
+             <field name="name">kts.account.fiscal.position.form</field>
+             <field name="model">account.fiscal.position</field>
+             <field name="inherit_id" ref="kts_account.kts_view_account_fiscal_position_form"/>
+                   <field name="arch" type="xml">
+                   <field name="tax_type" position="after">
+                   <field name="gst_apply" attrs="{'invisible':[('tax_type','!=','gst')],'required':[('tax_type','=','gst')]}"/>
+                   </field>
+                   </field>
+       </record>
+       
+      <record id="kts_view_gst_sale_order_form" model="ir.ui.view">
+            <field name="name">kts.gst.sale.order.form</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>      
+                <field name="arch" type="xml">
+                  <field name="partner_id" position="after">
+                    <field name="partner_state_code"/>
+                  
+                  </field>
+               
+               
+                    <xpath expr="//field[@name='order_line']/form/group/group/field[@name='product_id']" position="after">
+                         <field name="hsn_code" />
+                         
+                   </xpath>
+                    <xpath expr="//field[@name='order_line']/tree/field[@name='product_id']" position="after">
+                         <field name="hsn_code" />
+                   </xpath>
+                </field>
+        </record>
+        <record id="kts_view_gst_purchase_order_form" model="ir.ui.view">
+            <field name="name">kts.gst.purchase.order.form</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_form"/>      
+                <field name="arch" type="xml">
+                <field name="partner_id" position="after">
+                  <field name="partner_invoice_id"/>
+                  <field name="partner_shipping_id"/>
+                  <field name="partner_state_code"/>
+                
+                </field>
+                <xpath expr="//field[@name='order_line']/tree/field[@name='product_id']" position="after">
+                      <field name="hsn_code"/>
+                 </xpath>
+                
+                </field>
+        </record>                
   </data>
 </odoo>
