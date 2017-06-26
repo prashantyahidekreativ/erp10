@@ -73,6 +73,25 @@ class kts_gst_account_tax(models.Model):
     gst_type = fields.Selection([('igst','IGST'),('cgst','CGST'),('sgst','SGST'), ], 'GST Type')
     gst_account_code_id = fields.Many2one('kts.gst.account','GST Account Code')
     
+    @api.onchange('gst_type','type_tax_use')
+    def onchange_gst_type(self):
+        if not self.gst_type:
+            return
+        if self.type_tax_use and self.gst_type:
+            res = self.env['kts.gst.master'].search([])
+            gst_account = self.gst_type
+            if res:
+                if self.type_tax_use == 'sale':
+                    gst_account +='_out_acc_id'
+                elif self.type_tax_use == 'purchase':
+                    gst_account +='_in_acc_id'
+                account_id=getattr(res[0],gst_account)                      
+                self.update({'account_id':account_id.id,
+                             'refund_account_id':account_id.id
+                             })
+                return {'value':{'account_id':account_id.id,
+                             'refund_account_id':account_id.id
+                             }}
     @api.onchange('amount')
     def onchange_gst_tax(self):
         if self.tax_category =='gst':
@@ -109,7 +128,7 @@ class kts_gst_fiscal_position(models.Model):
                         result |= t.tax_dest_id
             if not tax_count:
                 result |= tax
-        if result and self.tax_type == 'gst':
+        if result and self.tax_type == 'gst' and product:
             for line in result:
                 if line.gst_account_code_id.id != product.hsn_id.gst_account_id.id:
                     raise UserError(_('Product %s is not in HSN Category')% product.name)
@@ -157,7 +176,7 @@ class kts_gst_account_invoice(models.Model):
     
     partner_invoice_id = fields.Many2one('res.partner', string='Invoice Address', readonly=True, required=True, states={'draft': [('readonly', False)], 'sent': [('readonly', False)]}, help="Invoice address for current sales order.")
     partner_state_code = fields.Char(related='partner_shipping_id.state_id.code',string='State Code',store=True)
-   
+    partner_gstin = fields.Char(related='partner_id.gstin',string='GSTIN',store=True)
     
     
     
@@ -244,10 +263,14 @@ class kts_gst_account_invoice(models.Model):
                  return  warn 
              return {'domain':{'fiscal_position_id':[('id','in',res)]  } }        
                           
-        
+    def _prepare_invoice_line_from_po_line(self, line):
+        res = super(kts_gst_account_invoice, self)._prepare_invoice_line_from_po_line(line)
+        res.update({'hsn_code':line.hsn_code}) 
+        return res 
+
 class kts_gst_account_inv_lines(models.Model):
     _inherit = 'account.invoice.line' 
-    hsn_code = fields.Char(related='product_id.hsn_id.hsn_code')
+    hsn_code = fields.Char(related='product_id.hsn_id.hsn_code',string='HSN Code', store=True)
     
     @api.onchange('product_id')
     def _onchange_product_id(self):
@@ -261,7 +284,12 @@ class kts_gst_account_inv_lines(models.Model):
             return {'warning': warning}
         
         return super(kts_gst_account_inv_lines, self)._onchange_product_id() 
-    
+
+class kts_gst_stock_picking(models.Model):
+    _inherit='stock.picking' 
+    partner_state_code = fields.Char(related='partner_id.state_id.code',string='Partner State Code',store=True)
+    partner_gstin = fields.Char(related='partner_id.gstin',string='Partner GSTIN',store=True)
+
 class kts_gst_sale_order(models.Model):
     _inherit='sale.order'
     
@@ -292,7 +320,7 @@ class kts_gst_sale_order(models.Model):
         readonly=True, states={'draft': [('readonly', False)],'sent': [('readonly', False)]},default = _default_fiscal_position_id,)                                
     
     partner_state_code = fields.Char(related='partner_shipping_id.state_id.code',string='State Code',store=True)
-   
+    partner_gstin = fields.Char(related='partner_id.gstin',string='GSTIN',store=True)
     
     
     
@@ -383,6 +411,21 @@ class kts_gst_sale_order(models.Model):
              if warn:
                  return  warn 
              return {'domain':{'fiscal_position_id':[('id','in',res)]  } }        
+    @api.multi
+    def _prepare_invoice(self):
+        res = super(kts_gst_sale_order, self)._prepare_invoice()
+        res.update({
+                    'partner_invoice_id':self.partner_invoice_id.id,
+                    'partner_shipping_id':self.partner_shipping_id.id,
+                    'partner_state_code':self.partner_state_code
+                    })    
+        return res
+    @api.model
+    def _prepare_procurement_group(self):
+        res = super(kts_gst_sale_order, self)._prepare_procurement_group()
+        res.update({'partner_state_code':self.partner_state_code,
+                    'partner_gstin':self.partner_gstin})
+        return res
 
 class kts_gst_sale_order_line(models.Model):
     _inherit='sale.order.line'
@@ -400,6 +443,14 @@ class kts_gst_sale_order_line(models.Model):
             return {'warning': warning}
         
         return  
+    @api.multi
+    def _prepare_invoice_line(self, qty):
+        res = super(kts_gst_sale_order_line, self)._prepare_invoice_line(qty)
+        res.update({
+                    'hsn_code':self.hsn_code,
+                    })
+        return res
+    
 class kts_gst_purchase_order(models.Model):
     _inherit='purchase.order'
     
@@ -431,7 +482,7 @@ class kts_gst_purchase_order(models.Model):
     partner_invoice_id = fields.Many2one('res.partner',string='Partner Invoice Address',readonly=True, states={'draft': [('readonly', False)],'sent': [('readonly', False)]})
     partner_shipping_id = fields.Many2one('res.partner',string='Partner Shipping Address',readonly=True, states={'draft': [('readonly', False)],'sent': [('readonly', False)]})    
     partner_state_code = fields.Char(related='partner_shipping_id.state_id.code',string='State Code',store=True)
-
+    partner_gstin = fields.Char(related='partner_id.gstin',string='GSTIN',store=True)
     @api.onchange('partner_id')
     def onchange_partner_id(self):
         if not self.partner_id:
@@ -519,7 +570,28 @@ class kts_gst_purchase_order(models.Model):
              if warn:
                  return  warn 
              return {'domain':{'fiscal_position_id':[('id','in',res)]  } }        
+    
+    @api.multi
+    def action_view_invoice(self):
+        result = super(kts_gst_purchase_order, self).action_view_invoice()
+        if self.partner_invoice_id:
+            result['context']['default_partner_invoice_id'] = self.partner_invoice_id.id
+        if self.partner_shipping_id:
+            result['context']['default_partner_shipping_id'] = self.partner_shipping_id.id
+        if self.partner_state_code:
+            result['context']['default_partner_state_code'] = self.partner_state_code
         
+        return result
+    
+    @api.model
+    def _prepare_picking(self):
+          res =super(kts_gst_purchase_order, self)._prepare_picking()
+          res.update({
+                    'partner_state_code':self.partner_state_code,
+                    'partner_gstin':self.partner_gstin
+                    }) 
+          return res
+    
 class kts_gst_purchase_order_line(models.Model):
     _inherit='purchase.order.line'
     hsn_code = fields.Char(related='product_id.hsn_id.hsn_code')
@@ -536,3 +608,35 @@ class kts_gst_purchase_order_line(models.Model):
             return {'warning': warning}
         
         return 
+    
+    @api.onchange('product_id')
+    def onchange_product_id(self):
+        result = {}
+        if not self.product_id:
+            return result
+
+        # Reset date, price and quantity since _onchange_quantity will provide default values
+        self.date_planned = datetime.today().strftime(DEFAULT_SERVER_DATETIME_FORMAT)
+        self.price_unit = self.product_qty = 0.0
+        self.product_uom = self.product_id.uom_po_id or self.product_id.uom_id
+        result['domain'] = {'product_uom': [('category_id', '=', self.product_id.uom_id.category_id.id)]}
+
+        product_lang = self.product_id.with_context({
+            'lang': self.partner_id.lang,
+            'partner_id': self.partner_id.id,
+        })
+        self.name = product_lang.display_name
+        if product_lang.description_purchase:
+            self.name += '\n' + product_lang.description_purchase
+
+        fpos = self.order_id.fiscal_position_id
+        if self.env.uid == SUPERUSER_ID:
+            company_id = self.env.user.company_id.id
+            self.taxes_id = fpos.map_tax(self.product_id.supplier_taxes_id.filtered(lambda r: r.company_id.id == company_id),self.product_id)
+        else:
+            self.taxes_id = fpos.map_tax(self.product_id.supplier_taxes_id,self.product_id)
+
+        self._suggest_quantity()
+        self._onchange_quantity()
+
+        return result

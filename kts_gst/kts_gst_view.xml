@@ -255,9 +255,16 @@
             <field name="arch" type="xml">
                     
                     <xpath expr="//field[@name='partner_id']" position="after">
-                       <field name="partner_invoice_id" />
-                       <field name="partner_state_code"/>
+                      
+                        <field name="partner_invoice_id" required="1"/> 
+                       
                    </xpath>
+                     <xpath expr="//field[@name='partner_shipping_id']" position="after">
+                       <field name="partner_state_code"/>
+                       <field name="partner_gstin"/>
+                      
+                     </xpath>
+                   
                    <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='product_id']" position="after">
                          <field name="hsn_code"/>
                          
@@ -273,6 +280,7 @@
                         <field name="partner_invoice_id"/>
                         <field name="partner_shipping_id"/>
                         <field name="partner_state_code"/>     
+                        <field name="partner_gstin"/>
                    </field>  
                    
                    </field>
@@ -289,6 +297,20 @@
                    </field>
        </record>
        
+       <record id="kts_view_gst_stock_picking_form_inherit" model="ir.ui.view">
+            <field name="name">kts.gst.stock.picking.form.inherit</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>     
+                 <field name="arch" type="xml">
+                 <field name="partner_id" position="after">
+                  <field name="partner_state_code" attrs="{'invisible':[('picking_type_code','=','internal')]}"/>
+                  <field name="partner_gstin" readonly="1" attrs="{'invisible':[('picking_type_code','=','internal')]}"/>
+                 
+                 </field>
+                 
+                 </field>
+        </record>
+      
       <record id="kts_view_gst_sale_order_form" model="ir.ui.view">
             <field name="name">kts.gst.sale.order.form</field>
             <field name="model">sale.order</field>
@@ -296,7 +318,7 @@
                 <field name="arch" type="xml">
                   <field name="partner_id" position="after">
                     <field name="partner_state_code"/>
-                  
+                    <field name="partner_gstin"/>
                   </field>
                
                
@@ -318,7 +340,7 @@
                   <field name="partner_invoice_id"/>
                   <field name="partner_shipping_id"/>
                   <field name="partner_state_code"/>
-                
+                  <field name="partner_gstin"/> 
                 </field>
                 <xpath expr="//field[@name='order_line']/tree/field[@name='product_id']" position="after">
                       <field name="hsn_code"/>
