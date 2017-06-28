@@ -256,7 +256,8 @@ class kts_gst_account_invoice(models.Model):
                        res = self.env['account.fiscal.position'].search(domain)
                        return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
          
-         elif self.date_invoice: 
+         else: 
+             today=datetime.today().strftime(DEFAULT_SERVER_DATETIME_FORMAT)
              tax_type=self.tax_type
              type = self.type
              fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',type)])
@@ -416,7 +417,7 @@ class kts_gst_sale_order(models.Model):
                        res = self.env['account.fiscal.position'].search(domain)
                        return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
          
-         elif self.validity_date: 
+         else: 
              tax_type=self.tax_type
              inv_type='out_invoice'  
              warn = False
@@ -587,7 +588,7 @@ class kts_gst_purchase_order(models.Model):
                        res = self.env['account.fiscal.position'].search(domain)
                        return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
          
-         elif self.date_order: 
+         else: 
              tax_type=self.tax_type
              inv_type='in_invoice'  
              warn = False
