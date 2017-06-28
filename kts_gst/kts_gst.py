@@ -7,7 +7,7 @@ from odoo import api, fields, models, _
 
 class kts_gst_partner(models.Model):
     _inherit='res.partner'
-    partner_type = fields.Selection([('gst','GST'), ('uid','UID'),('gdi','GDI'),('no_app','Not Applicable')], 'Partner Type',default='no_app') 
+    partner_type = fields.Selection([('gst','GST'), ('uid','UID'),('gdi','GDI'),('no_app','Not Applicable')], 'Partner Type',default='no_app',required=True) 
     gstin = fields.Char('GSTIN')
     file = fields.Binary('GSTIN File')
     uid = fields.Char('UID')
@@ -15,12 +15,13 @@ class kts_gst_partner(models.Model):
 
 class kts_gst_res_company(models.Model):
     _inherit='res.company'
-    gstin = fields.Char('GSTIN')
+    gstin = fields.Char('GSTIN',required=True)
     gstin_file = fields.Binary('GSTIN File')
     state_code = fields.Char('State Code')
     composition_flag = fields.Boolean('Composition', default=False)
     manufacturer_flag = fields.Boolean('Is Manufacturer', default=False)    
     gst_forced = fields.Boolean('GST Forced')
+    gst_payment_flag = fields.Boolean('GST Advance Payment')
     
     @api.onchange('state_id')
     def onchange_state(self):
@@ -114,7 +115,7 @@ class kts_gst_account_tax(models.Model):
 class kts_gst_fiscal_position(models.Model):
     _inherit='account.fiscal.position'
     tax_type = fields.Selection(selection_add=[('gst', 'GST')],required=True)
-    gst_apply = fields.Selection([('inter','Inter State'),('intra','Intra State') ], 'GST Apply') 
+    gst_apply = fields.Selection([('inter','Inter State'),('intra','Intra State'),('na','Not Applicable') ], 'GST Apply') 
     
     @api.model     # noqa
     def map_tax(self, taxes, product=None, partner=None):
@@ -176,7 +177,10 @@ class kts_gst_account_invoice(models.Model):
     
     partner_invoice_id = fields.Many2one('res.partner', string='Invoice Address', readonly=True, required=True, states={'draft': [('readonly', False)], 'sent': [('readonly', False)]}, help="Invoice address for current sales order.")
     partner_state_code = fields.Char(related='partner_shipping_id.state_id.code',string='State Code',store=True)
+    partner_type = fields.Selection(related='partner_id.partner_type',string='Partner Type',store=True)
     partner_gstin = fields.Char(related='partner_id.gstin',string='GSTIN',store=True)
+    partner_udi = fields.Char(related='partner_id.uid',string='UIDN',store=True)
+    partner_gdi = fields.Char(related='partner_id.gdi',string='GDIN',store=True)
     
     
     
@@ -200,7 +204,15 @@ class kts_gst_account_invoice(models.Model):
         
         
         if self.env.user.company_id.gst_forced:
-           if self.company_id.state_code != delivery_addr.state_id.code:   
+           if self.partner_id.partner_type != 'gst':
+               inv_type = self.type
+               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','na')]
+           
+               res = self.env['account.fiscal.position'].search(domain)
+               self.update(values)
+               return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
+           
+           elif self.company_id.state_code != delivery_addr.state_id.code:   
               inv_type = self.type
               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
            
@@ -320,7 +332,10 @@ class kts_gst_sale_order(models.Model):
         readonly=True, states={'draft': [('readonly', False)],'sent': [('readonly', False)]},default = _default_fiscal_position_id,)                                
     
     partner_state_code = fields.Char(related='partner_shipping_id.state_id.code',string='State Code',store=True)
+    partner_type = fields.Selection(related='partner_id.partner_type',string='Partner Type',store=True)
     partner_gstin = fields.Char(related='partner_id.gstin',string='GSTIN',store=True)
+    partner_udi = fields.Char(related='partner_id.uid',string='UIDN',store=True)
+    partner_gdi = fields.Char(related='partner_id.gdi',string='GDIN',store=True)
     
     
     
@@ -346,7 +361,15 @@ class kts_gst_sale_order(models.Model):
         
         
         if self.env.user.company_id.gst_forced:
-           if self.company_id.state_code != delivery_addr.state_id.code:   
+           if self.partner_id.partner_type != 'gst':
+               inv_type = self.type
+               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','na')]
+           
+               res = self.env['account.fiscal.position'].search(domain)
+               self.update(values)
+               return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
+           
+           elif self.company_id.state_code != delivery_addr.state_id.code:   
               inv_type='out_invoice'  
    
               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
@@ -482,7 +505,11 @@ class kts_gst_purchase_order(models.Model):
     partner_invoice_id = fields.Many2one('res.partner',string='Partner Invoice Address',readonly=True, states={'draft': [('readonly', False)],'sent': [('readonly', False)]})
     partner_shipping_id = fields.Many2one('res.partner',string='Partner Shipping Address',readonly=True, states={'draft': [('readonly', False)],'sent': [('readonly', False)]})    
     partner_state_code = fields.Char(related='partner_shipping_id.state_id.code',string='State Code',store=True)
+    partner_type = fields.Selection(related='partner_id.partner_type',string='Partner Type',store=True)
     partner_gstin = fields.Char(related='partner_id.gstin',string='GSTIN',store=True)
+    partner_udi = fields.Char(related='partner_id.uid',string='UIDN',store=True)
+    partner_gdi = fields.Char(related='partner_id.gdi',string='GDIN',store=True)
+    
     @api.onchange('partner_id')
     def onchange_partner_id(self):
         if not self.partner_id:
@@ -505,7 +532,15 @@ class kts_gst_purchase_order(models.Model):
         
         
         if self.env.user.company_id.gst_forced:
-           if self.company_id.state_code != delivery_addr.state_id.code:   
+           if self.partner_id.partner_type != 'gst':
+               inv_type = self.type
+               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','na')]
+           
+               res = self.env['account.fiscal.position'].search(domain)
+               self.update(values)
+               return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
+           
+           elif self.company_id.state_code != delivery_addr.state_id.code:   
               inv_type='in_invoice'  
    
               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
@@ -640,3 +675,6 @@ class kts_gst_purchase_order_line(models.Model):
         self._onchange_quantity()
 
         return result
+
+        
+    

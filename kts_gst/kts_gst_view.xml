@@ -17,7 +17,11 @@
                <field name="file" attrs="{'invisible': [('partner_type', 'in', ('no_app','gdi'))]}"/>
                 
               </group> 
-               </xpath>      
+               </xpath>
+               <field name="state_id" position="attributes">
+                <attribute name="required">1</attribute>
+               
+               </field>      
            </field>
    </record>
    
@@ -35,6 +39,7 @@
                   <field name="composition_flag"/>
                   <field name="manufacturer_flag"/>
                   <field name="gst_forced"/>
+                  <field name="gst_payment_flag"/>
                   </group> 
               </page>
                </xpath>      
@@ -227,8 +232,8 @@
             <field name="arch" type="xml">
                <field name="type_tax_use" position="after">
                                                   
-                 <field name="gst_type"/>                 
-                 <field name="gst_account_code_id"/>                 
+                 <field name="gst_type" attrs="{'required':[('tax_category','=','gst')]}"/>                 
+                 <field name="gst_account_code_id" attrs="{'required':[('tax_category','=','gst')]}"/>                 
                                                                       
                  </field>
               </field>
@@ -261,8 +266,11 @@
                    </xpath>
                      <xpath expr="//field[@name='partner_shipping_id']" position="after">
                        <field name="partner_state_code"/>
-                       <field name="partner_gstin"/>
-                      
+                       <field name="partner_type" invisible="1"/>
+                       <field name="partner_gstin" attrs="{'invisible':[('partner_type','!=','gst')]}" />
+                       <field name="partner_udi" attrs="{'invisible':[('partner_type','!=','uid')]}"/>
+                       <field name="partner_gdi" attrs="{'invisible':[('partner_type','!=','gdi')]}"/>/>
+                       
                      </xpath>
                    
                    <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='product_id']" position="after">
@@ -280,7 +288,11 @@
                         <field name="partner_invoice_id"/>
                         <field name="partner_shipping_id"/>
                         <field name="partner_state_code"/>     
-                        <field name="partner_gstin"/>
+                        <field name="partner_type" invisible="1"/>
+                        <field name="partner_gstin" attrs="{'invisible':[('partner_type','!=','gst')]}" />
+                        <field name="partner_udi" attrs="{'invisible':[('partner_type','!=','uid')]}"/>
+                        <field name="partner_gdi" attrs="{'invisible':[('partner_type','!=','gdi')]}"/>/>
+                     
                    </field>  
                    
                    </field>
@@ -318,7 +330,11 @@
                 <field name="arch" type="xml">
                   <field name="partner_id" position="after">
                     <field name="partner_state_code"/>
-                    <field name="partner_gstin"/>
+                      <field name="partner_type" invisible="1"/>
+                       <field name="partner_gstin" attrs="{'invisible':[('partner_type','!=','gst')]}" />
+                       <field name="partner_udi" attrs="{'invisible':[('partner_type','!=','uid')]}"/>
+                       <field name="partner_gdi" attrs="{'invisible':[('partner_type','!=','gdi')]}"/>/>
+                     
                   </field>
                
                
@@ -340,7 +356,11 @@
                   <field name="partner_invoice_id"/>
                   <field name="partner_shipping_id"/>
                   <field name="partner_state_code"/>
-                  <field name="partner_gstin"/> 
+                    <field name="partner_type" invisible="1"/>
+                       <field name="partner_gstin" attrs="{'invisible':[('partner_type','!=','gst')]}" />
+                       <field name="partner_udi" attrs="{'invisible':[('partner_type','!=','uid')]}"/>
+                       <field name="partner_gdi" attrs="{'invisible':[('partner_type','!=','gdi')]}"/>/>
+                      
                 </field>
                 <xpath expr="//field[@name='order_line']/tree/field[@name='product_id']" position="after">
                       <field name="hsn_code"/>
