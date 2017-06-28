@@ -298,6 +298,9 @@
                         <field name="partner_gdi" attrs="{'invisible':[('partner_type','!=','gdi')]}"/>/>
                      
                    </field>  
+                   <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='product_id']" position="after">
+                         <field name="hsn_code"/>
+                   </xpath>
                    
                    </field>
        </record>
