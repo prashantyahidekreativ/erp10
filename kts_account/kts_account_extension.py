@@ -159,6 +159,7 @@ class kts_account_fiscal_position(models.Model):
     type = fields.Selection([('out_invoice','Sale'),('in_invoice','Purchase')],string='Type')
     note=fields.Text('Remark')
     price_include=fields.Boolean('Price Include Tax',default=False)
+    
     @api.onchange('start_date','end_date')
     def check_change(self):
         if self.end_date and self.start_date:
@@ -372,33 +373,6 @@ class kts_account_invoice(models.Model):
         return tax_grouped  
    
     
-    @api.onchange('tax_type','date_invoice')
-    def tax_type_onchange(self):
-        res=[]
-        warn={}
-        self.ensure_one()
-        if not self.tax_type:
-            return
-        
-        tax_type=self.tax_type
-        type = self.type
-        
-        fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',type)])
-        
-        
-        for i in fspo:
-               if i.end_date and self.date_invoice and i.end_date > self.date_invoice:
-                  res.append(i.id)  
-               elif i.end_date and self.date_invoice and i.end_date < self.date_invoice:
-                    warn= {'warning': {
-                        'title': _('Warning'),
-                        'message':  (_('%s This fiscal position is not valide for upto this date')% i.name)
-                         } }
-                  
-               else: res.append(i.id)
-        if warn:
-             return  warn 
-        return {'domain':{'fiscal_position_id':[('id','in',res)]  } }        
         
         
     @api.onchange('fiscal_position_id')
@@ -711,29 +685,29 @@ class kts_sale_order(models.Model):
     client_order_ref_date=fields.Date('Customer Ref Date')
     
     
-    @api.onchange('tax_type','validity_date')
-    def tax_type_onchange(self):
-        res=[]
-        warn={}
-        self.ensure_one()
-        if not self.tax_type:
-            return
-        type = 'out_invoice'
-        tax_type=self.tax_type
-        fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',type)]) 
-        for i in fspo:
-            if i.end_date and self.validity_date and i.end_date > self.validity_date:
-                res.append(i.id)  
-            elif i.end_date and self.validity_date and i.end_date < self.validity_date:
-                  warn= {'warning': {
-                        'title': _('Warning'),
-                        'message':  (_('%s This fiscal position is not valide for upto this date')% i.name)
-                         } }
-                  
-            else: res.append(i.id)
-        if warn:
-             return  warn 
-        return {'domain':{'fiscal_position_id':[('id','in',res)]  } }        
+#     @api.onchange('tax_type','validity_date')
+#     def tax_type_onchange(self):
+#         res=[]
+#         warn={}
+#         self.ensure_one()
+#         if not self.tax_type:
+#             return
+#         type = 'out_invoice'
+#         tax_type=self.tax_type
+#         fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',type)]) 
+#         for i in fspo:
+#             if i.end_date and self.validity_date and i.end_date > self.validity_date:
+#                 res.append(i.id)  
+#             elif i.end_date and self.validity_date and i.end_date < self.validity_date:
+#                   warn= {'warning': {
+#                         'title': _('Warning'),
+#                         'message':  (_('%s This fiscal position is not valide for upto this date')% i.name)
+#                          } }
+#                   
+#             else: res.append(i.id)
+#         if warn:
+#              return  warn 
+#         return {'domain':{'fiscal_position_id':[('id','in',res)]  } }        
         
     @api.onchange('fiscal_position_id')
     def fiscal_position_change(self):
@@ -974,16 +948,16 @@ class kts_purchase_order(models.Model):
     date_planned = fields.Datetime(string='Scheduled Date', inverse='', required=True, index=True, oldname='minimum_planned_date') 
     note=fields.Text('Notes')
     
-    @api.onchange('tax_type')
-    def tax_type_onchange(self):
-        self.ensure_one()
-        if not self.tax_type:
-            return
-        type='in_invoice'
-        tax_type=self.tax_type
-        fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',type)])  
-        return {'domain':{'fiscal_position_id':[('id','in',fspo.ids)]  } }        
-        
+#     @api.onchange('tax_type')
+#     def tax_type_onchange(self):
+#         self.ensure_one()
+#         if not self.tax_type:
+#             return
+#         type='in_invoice'
+#         tax_type=self.tax_type
+#         fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',type)])  
+#         return {'domain':{'fiscal_position_id':[('id','in',fspo.ids)]  } }        
+#         
     @api.onchange('fiscal_position_id')
     def fiscal_position_change(self):
         """Updates taxes and accounts on all invoice lines"""
@@ -1237,6 +1211,7 @@ class kts_payment(models.Model):
     cheque_no = fields.Char('Cheque No')
     cheque_date = fields.Date('Cheque Date')
     Payee_name = fields.Char('Payee Name')
+    
     @api.onchange('partner_type')
     def _onchange_partner_type(self):
         # Set partner_id domain

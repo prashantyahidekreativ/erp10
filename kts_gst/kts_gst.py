@@ -362,7 +362,7 @@ class kts_gst_sale_order(models.Model):
         
         if self.env.user.company_id.gst_forced:
            if self.partner_id.partner_type != 'gst':
-               inv_type = self.type
+               inv_type = 'out_invoice'
                domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','na')]
            
                res = self.env['account.fiscal.position'].search(domain)
@@ -533,7 +533,7 @@ class kts_gst_purchase_order(models.Model):
         
         if self.env.user.company_id.gst_forced:
            if self.partner_id.partner_type != 'gst':
-               inv_type = self.type
+               inv_type = 'in_invoice'
                domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','na')]
            
                res = self.env['account.fiscal.position'].search(domain)
