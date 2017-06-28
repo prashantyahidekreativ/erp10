@@ -290,7 +290,7 @@
                    <field name="arch" type="xml">
                    <field name="partner_id" position="after">
                         <field name="partner_invoice_id"/>
-                        <field name="partner_shipping_id"/>
+                        <field name="partner_shipping_id" required="1"/>
                         <field name="partner_state_code"/>     
                         <field name="partner_type" invisible="1"/>
                         <field name="partner_gstin" attrs="{'invisible':[('partner_type','!=','gst')]}" />
