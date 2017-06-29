@@ -46,11 +46,11 @@ class kts_hsn_master(models.Model):
 
 class kts_gst_product_product(models.Model):
     _inherit='product.template'
-    hsn_id = fields.Many2one('kts.hsn.master', 'HSN Code',required=True)
+    hsn_id = fields.Many2one('kts.hsn.master', 'HSN Code')
 
 class kts_gst_product_category(models.Model):
     _inherit='product.category'
-    hsn_id = fields.Many2one('kts.hsn.master', 'HSN Code')
+    hsn_id = fields.Many2one('kts.hsn.master', 'HSN Code',required=True)
         
     
 class kts_gst_master(models.Model):
@@ -132,7 +132,7 @@ class kts_gst_fiscal_position(models.Model):
                 result |= tax
         if result and self.tax_type == 'gst' and product:
             for line in result:
-                if line.gst_account_code_id.id != product.hsn_id.gst_account_id.id:
+                if (line.gst_account_code_id.id != product.hsn_id.gst_account_id.id) or (line.gst_account_code_id.id != product.categ_id.hsn_id.gst_account_id.id):
                     raise UserError(_('Product %s is not in HSN Category')% product.name)
         return result
 
