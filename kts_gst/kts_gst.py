@@ -132,8 +132,40 @@ class kts_gst_fiscal_position(models.Model):
                 result |= tax
         if result and self.tax_type == 'gst' and product:
             for line in result:
-                if (line.gst_account_code_id.id != product.hsn_id.gst_account_id.id) or (line.gst_account_code_id.id != product.categ_id.hsn_id.gst_account_id.id):
-                    raise UserError(_('Product %s is not in HSN Category')% product.name)
+                if not product.categ_id.hsn_id:
+                    raise UserError(_('Product %s not having hsn code please add hsn code')% product.name)
+                if (line.gst_account_code_id.id != product.hsn_id.gst_account_id.id): 
+                   tax_obj=self.env['account.tax']
+                   gst_acc_code=product.hsn_id.gst_account_id if product.hsn_id else product.categ_id.hsn_idgst_account_id  
+                   
+                   cgst=gst_acc_code.cgst
+                   sgst=gst_acc_code.sgst
+                   igst=gst_acc_code.igst
+                   if self.gst_apply == 'inter' and  self.type=='out_invoice':    
+                       domain=[('type_tax_use','=','sale'),
+                               ('gst_account_code_id','=',gst_acc_code.id),
+                               ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
+                       tax_add_ids = tax_obj.search(domain)
+                       return tax_add_ids
+                   elif self.gst_apply == 'intra' and  self.type=='out_invoice':
+                        domain=[('type_tax_use','=','sale'),
+                               ('gst_account_code_id','=',gst_acc_code.id),
+                               ('gst_type','=','igst'),('amount','=',igst)]
+                        tax_add_ids = tax_obj.search(domain)    
+                        return tax_add_ids
+                   elif self.gst_apply == 'inter' and  self.type=='in_invoice':    
+                       domain=[('type_tax_use','=','purchase'),
+                               ('gst_account_code_id','=',gst_acc_code.id),
+                               ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
+                       tax_add_ids = tax_obj.search(domain)
+                       return tax_add_ids
+                   elif self.gst_apply == 'intra' and  self.type=='in_invoice':
+                        domain=[('type_tax_use','=','purchase'),
+                               ('gst_account_code_id','=',gst_acc_code.id),
+                               ('gst_type','=','igst'),('amount','=',igst)]
+                        tax_add_ids = tax_obj.search(domain)    
+                        return tax_add_ids
+
         return result
 
 class kts_gst_account_configuration(models.TransientModel):
@@ -211,7 +243,7 @@ class kts_gst_account_invoice(models.Model):
            
                res = self.env['account.fiscal.position'].search(domain)
                self.update(values)
-               return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
+               return {'value':values,'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
            
            elif self.company_id.state_code != delivery_addr.state_id.code:   
               inv_type = self.type
@@ -219,14 +251,14 @@ class kts_gst_account_invoice(models.Model):
            
               res = self.env['account.fiscal.position'].search(domain)
               self.update(values)
-              return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
+              return {'value':values,'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
            else:
                inv_type = self.type
                domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
            
                res = self.env['account.fiscal.position'].search(domain)
                self.update(values)
-               return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
+               return {'value':values,'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
                 
         
         self.update(values)
@@ -284,7 +316,7 @@ class kts_gst_account_invoice(models.Model):
 
 class kts_gst_account_inv_lines(models.Model):
     _inherit = 'account.invoice.line' 
-    hsn_code = fields.Char(related='product_id.hsn_id.hsn_code',string='HSN Code', store=True)
+    hsn_code = fields.Char(related='product_id.categ_id.hsn_id.hsn_code',string='HSN Code', store=True)
     
     @api.onchange('product_id')
     def _onchange_product_id(self):
@@ -421,7 +453,7 @@ class kts_gst_sale_order(models.Model):
              tax_type=self.tax_type
              inv_type='out_invoice'  
              warn = False
-             fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',type)])
+             fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',inv_type)])
              res=[]
              for i in fspo:
                    if i.end_date and self.validity_date and i.end_date > self.validity_date:
@@ -454,7 +486,7 @@ class kts_gst_sale_order(models.Model):
 
 class kts_gst_sale_order_line(models.Model):
     _inherit='sale.order.line'
-    hsn_code = fields.Char(related='product_id.hsn_id.hsn_code')
+    hsn_code = fields.Char(related='product_id.categ_id.hsn_id.hsn_code')
     
     @api.onchange('product_id')
     def _onchange_product_id(self):
@@ -593,7 +625,7 @@ class kts_gst_purchase_order(models.Model):
              inv_type='in_invoice'  
              warn = False
              res=[]
-             fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',type)])
+             fspo = self.env['account.fiscal.position'].search(['&',('tax_type','=',tax_type),('type','=',inv_type)])
              for i in fspo:
                    if i.end_date and self.date_order and i.end_date > self.date_order:
                       res.append(i.id)  
@@ -631,7 +663,7 @@ class kts_gst_purchase_order(models.Model):
     
 class kts_gst_purchase_order_line(models.Model):
     _inherit='purchase.order.line'
-    hsn_code = fields.Char(related='product_id.hsn_id.hsn_code')
+    hsn_code = fields.Char(related='product_id.categ_id.hsn_id.hsn_code')
     
     @api.onchange('product_id')
     def _onchange_product_id(self):

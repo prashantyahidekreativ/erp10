@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>      
+  <data>         
+      <record id="view_kts_company_report_template_tree" model="ir.ui.view">
+            <field name="name">kts.report.template.tree</field>
+            <field name="model">kts.report.template</field>   
+            <field name="arch" type="xml">
+                <tree string="Report Template">
+		                <field name="name"/>
+		                <field name="model_id"/>
+		                <field name="state"/>
+		                <field name="partner"/>
+		                <field name="print_no"/>
+		                <field name="company_id"/>    
+                       
+                </tree>
+            </field>
+       </record>
+        <record id="view_kts_company_report_template_form" model="ir.ui.view">
+            <field name="name">kts.report.template.form</field>
+            <field name="model">kts.report.template</field>   
+            <field name="arch" type="xml">
+		             <form string="Company">
+		               <sheet> 
+			              <group>
+			                <field name="name"/>
+			                <field name="model_id"/>
+			                <field name="state"/>
+			                <field name="partner"/>
+			                <field name="print_no"/>
+			                <field name="company_id"/> 
+					        <field name="note"/>       
+				            
+				          </group>
+				      </sheet>
+		             </form>
+		    </field>
+                  
+                 
+        </record>
+         
+         
+       <record id="action_kts_company_master" model="ir.actions.act_window">
+            <field name="name">Company Report template</field>
+            <field name="res_model">kts.report.template</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>            
+       </record>
+       
+       <menuitem
+            id="menu_kts_company_master"
+            name="Company Report Template"
+            action="action_kts_company_master"
+            parent="base.menu_users"    
+            sequence="8"/>
+            
+</data>
+</openerp>

@@ -1,0 +1,10 @@
+{
+'name':'kts_company_master',
+'version':'1.0',
+'author':'Prashant',
+'depends':['base'],
+'data':['kts_view_company_master.xml',],
+'website':'http://www.kreativtech.com',
+'installable':True,
+'application':True,
+}
