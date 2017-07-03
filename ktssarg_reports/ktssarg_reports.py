@@ -2589,16 +2589,16 @@ class kts_picking_delivery_chalan(models.Model):
                    for line1 in line.pack_lot_ids: 
                        lines.append({
                           'product':line.product_id.name,
-                          'uom':line.product_uom.name,
+                          'uom':line.product_uom_id.name,
                           'serialno':line1.lot_id.name,
                           'qty_done':qty,
                               })
             else:
                lines.append({
                           'product':line.product_id.name,
-                          'uom':line.product_uom.name,
-                          'serialno':line1.lot_id.name,
-                          'qty_done':line.product_uom_qty,
+                          'uom':line.product_uom_id.name,
+                          'serialno':'',
+                          'qty_done':line.qty_done,
                           })
             return lines
     def print_barcode(self, cr, uid, ids, context={}):
