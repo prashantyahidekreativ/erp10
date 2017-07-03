@@ -586,6 +586,31 @@ class kts_report_sale_order(models.Model):
         else:
             return '' 
     
+    def gst_rate(self,line,gst):
+        res=False
+        for line in self.order_line[0]:
+            for l in line.tax_id:
+                if l.gst_type ==gst:
+                   res= str(l.amount)+'%'
+            
+        if res:    
+           return res
+        else:
+            return 'NA'
+    
+    def prepared_by(self,val):
+        emp_id=self.env['hr.employee'].search([('user_id','=',self.write_uid.id)])    
+        if val=='name':
+            if emp_id:
+                return emp_id.name
+            else:
+                return self.write_uid.name
+        elif val=='desig':
+            if emp_id:
+                return emp_id.job_id.name
+            else:
+                return ''          
+    
     def get_move_lines(self):
         lines=[]
         i=0
@@ -612,6 +637,9 @@ class kts_report_sale_order(models.Model):
                             'qty':line.product_uom_qty,
                             'price':line.price_unit,
                             'discount':line.discount,
+                            'igst':self.gst_rate(line,'igst'),
+                            'cgst':self.gst_rate(line,'cgst'),
+                            'sgst':self.gst_rate(line,'sgst'),
                             'delivery_days':line.customer_lead,
                             'subtotal':line.price_subtotal if not self.fiscal_position_id.price_include else subtotal
                             })
@@ -3760,6 +3788,18 @@ class kts_account_invoice_report(models.Model):
                 ret=currency_to_text(amount,currency_name,lang)
                 return  ret   
     
+    def prepared_by(self,val):
+        emp_id=self.env['hr.employee'].search([('user_id','=',self.write_uid.id)])    
+        if val=='name':
+            if emp_id:
+                return emp_id.name
+            else:
+                return self.write_uid.name
+        elif val=='desig':
+            if emp_id:
+                return emp_id.job_id.name
+            else:
+                return ''
     def get_move_lines(self):
         lines=[]
         i=0
@@ -3922,6 +3962,18 @@ class kts_report_purchase_order(models.Model):
         return do_print_setup(self, {'name':name, 'model':'purchase.order','report_name':report_name},
                 False,self.partner_id.id)
     
+    def prepared_by(self,val):
+        emp_id=self.env['hr.employee'].search([('user_id','=',self.write_uid.id)])    
+        if val=='name':
+            if emp_id:
+                return emp_id.name
+            else:
+                return self.write_uid.name
+        elif val=='desig':
+            if emp_id:
+                return emp_id.job_id.name
+            else:
+                return ''  
     def excise_cal(self):
         excise_amount=0.0
         for line in self.tax_line_ids:
@@ -3991,13 +4043,23 @@ class kts_report_purchase_order(models.Model):
             freight_charges=round(self.amount_untaxed*freight_charges/100.0)   
         return freight_charges    
     
-    
+    def gst_rate_line(self,line,gst):
+        res=False
+        for line in self.order_line[0]:
+            for l in line.taxes_id:
+                if l.gst_type ==gst:
+                   res= str(l.amount)+'%'
+            
+        if res:    
+           return res
+        else:
+            return 'NA'
     def get_move_lines(self):
         lines=[]
         i=0
         for line in self.order_line:
-              i+=1
-              
+           i+=1
+           if self.tax_type != 'gst':   
               lines.append({
                             'sr_no':i,
                             'code':line.product_id.default_code if self.tax_type!='gst' else line.product_id.categ_id.hsn_id.hsn_code,
@@ -4009,6 +4071,23 @@ class kts_report_purchase_order(models.Model):
                             'net_price':line.price_subtotal,
                             'delivery_date':line.supplier_schedule_date,
                             })
+           else:
+               
+               lines.append({
+                            'sr_no':i,
+                            'code':line.product_id.default_code if self.tax_type!='gst' else line.product_id.categ_id.hsn_id.hsn_code,
+                            'product':line.product_id.name,
+                            'qty':line.product_qty,
+                            'price':line.price_unit,
+                            'discount':line.discount,
+                            'igst':self.gst_rate_line(line,'igst'),
+                            'cgst':self.gst_rate_line(line,'cgst'),
+                            'sgst':self.gst_rate_line(line,'sgst'),
+                            'uom':line.product_uom.name,
+                            'net_price':line.price_subtotal,
+                            'delivery_date':line.supplier_schedule_date,
+                            })
+        
         return lines
             
 
