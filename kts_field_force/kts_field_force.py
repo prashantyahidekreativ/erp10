@@ -327,6 +327,24 @@ class kts_fieldforce_employee_tracking_shift_line(models.Model):
 class kts_fieldforce_visit_details(models.Model):
     _inherit='kts.visit.details'
     
+    
+    @api.model
+    def get_visit_lines(self):
+        uid = self._uid
+        emp_id = self.env['hr.employee'].search([('user_id','=',uid)])
+        assigned_lines=self.search_read([('emp_id','=',emp_id.id),('state','=','assgined')],limit=20,order='id desc')
+        accepted_lines = self.search_read([('emp_id','=',emp_id.id),('state','=','accepted')],limit=20,order='id desc')
+        in_progress_lines=self.search_read([('emp_id','=',emp_id.id),('state','=','in_progress')],limit=20,order='id desc')
+        
+        postpone_lines=self.search_read([('emp_id','=',emp_id.id),('state','=','postpone')],limit=20,order='id desc')
+        done_lines=self.search_read([('emp_id','=',emp_id.id),('state','=','done')],limit=20,order='id desc')
+        records=assigned_lines+accepted_lines+in_progress_lines+postpone_lines+done_lines
+        length=len(records)
+        return{
+            'length': length,
+            'records': records
+        }
+    
     @api.multi
     def consume_product(self):
         self.ensure_one()
