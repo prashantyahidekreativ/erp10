@@ -518,11 +518,13 @@ class kts_report_aeroo(models.Model):
            {'name':'Sale Price Variance Report', 'report_sxw_content_data':'sale_price_variance','model':'kts.sale.reports', 'deferred':'adaptive',},
            {'name':'Sale Order GST', 'report_sxw_content_data':'sale_order_gst','model':'sale.order', 'deferred':'adaptive',},                     
            {'name':'Customer Invoice GST', 'report_sxw_content_data':'customer_invoice_gst','model':'account.invoice', 'deferred':'adaptive',},                     
-          {'name':'Credit Note GST', 'report_sxw_content_data':'credit_note_gst','model':'account.invoice', 'deferred':'adaptive',},                     
+           {'name':'Credit Note GST', 'report_sxw_content_data':'credit_note_gst','model':'account.invoice', 'deferred':'adaptive',},                     
            {'name':'Debit Note GST', 'report_sxw_content_data':'debit_note_gst','model':'account.invoice', 'deferred':'adaptive',},                     
-          {'name':'Supplier Invoice GST', 'report_sxw_content_data':'supplier_invoice_gst','model':'account.invoice', 'deferred':'adaptive',},                     
-            {'name':'Purchase Order GST', 'report_sxw_content_data':'purchase_order_gst','model':'purchase.order', 'deferred':'adaptive',},                     
-
+           {'name':'Supplier Invoice GST', 'report_sxw_content_data':'supplier_invoice_gst','model':'account.invoice', 'deferred':'adaptive',},                     
+           {'name':'Purchase Order GST', 'report_sxw_content_data':'purchase_order_gst','model':'purchase.order', 'deferred':'adaptive',},                     
+           {'name':'Quotation Sale Order GST', 'report_sxw_content_data':'quotation_sale_order_gst','model':'sale.order', 'deferred':'adaptive',},                     
+           {'name':'Request For Quotation GST', 'report_sxw_content_data':'request_for_quotation_gst','model':'purchase.order', 'deferred':'adaptive',},                          
+           
          ]
     
         return report_keys 
@@ -535,9 +537,13 @@ class kts_report_sale_order(models.Model):
     @api.multi
     def to_print_quotation_sale_order(self):
         self.ensure_one()
-        report_name= 'quotation_sale_order'
-        name='Quotation Sale Order'          
-             
+        if self.tax_type != 'gst':
+           report_name= 'quotation_sale_order'
+           name='Quotation Sale Order'          
+        else:
+            report_name= 'quotation_sale_order_gst'
+            name='Quotation Sale Order GST'     
+          
         return do_print_setup(self, {'name':name, 'model':'sale.order','report_name':report_name},
                 False,self.partner_id.id, context)
       
@@ -3956,9 +3962,12 @@ class kts_report_purchase_order(models.Model):
         elif self.state in ['draft','sent'] and self.tax_type!='gst':
             report_name= 'request_for_quotation'
             name='Request For Quotation'     
-        else:
+        elif self.state == 'purchase':
             report_name= 'purchase_order_gst'
             name='Purchase Order GST'    
+        elif self.state in ['draft','sent']:
+            report_name= 'request_for_quotation_gst'
+            name='Request For Quotation GST'
         return do_print_setup(self, {'name':name, 'model':'purchase.order','report_name':report_name},
                 False,self.partner_id.id)
     
