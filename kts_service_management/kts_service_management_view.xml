@@ -399,25 +399,38 @@
 			           <field name="end_customer_name"/>
 			           <field name="end_customer_mob"/>
 			          </field> 
-					<group name="top" position="after">
-				        
-				        <field name="service_ids" >
-				          <tree string="Services For This Contract">
-						          
-						          <field name="name"/>
-						          <field name="partner_id"/>
-						          <field name="service_type"/>
-						          <field name="due_date"/>
-						          <field name="type"/>
-						          <field name="logged_by"/>
-						          <field name="assigned_to"/>
-						          <field name="state"/>
-						          
-				          </tree>
-				        
-				        </field>
-				    </group> 
-				        
+					<xpath expr="//sheet" position="inside">
+					<notebook>
+						  <page string="Service" name="service">
+						 
+					        <field name="service_ids" >
+					          <tree string="Services For This Contract">
+							          
+							          <field name="name"/>
+							          <field name="partner_id"/>
+							          <field name="service_type"/>
+							          <field name="due_date"/>
+							          <field name="type"/>
+							          <field name="logged_by"/>
+							          <field name="assigned_to"/>
+							          <field name="state"/>
+							          
+					          </tree>
+					        
+					        </field>
+					    
+					    </page> 
+					    <page string="History">
+					      <field name="history_lines" option="{'no_create':True}">
+					         <tree>
+					          <field name="lot_id"/>
+					          <field name="move_id"/>
+					         </tree>
+					      </field>
+					        
+					    </page>
+				   </notebook>
+		           </xpath>
 		        </field>
         </record>
        
@@ -432,8 +445,10 @@
                  <field name="arch" type="xml">
                   <field name="product_uom" position="after">
                      <field name="service_flag" invisible="1"/>
-                     <field name="contract_id"/>
+                     <field name="contract_id" invisible="1"/>
                      <field name="invoice_flag" />
+                     <field name="contract_flag" invisible="1"/>
+                     <field name="customer_contract_id" attrs="{'invisible':[('contract_flag','!=',True)],'required':[('contract_flag','=',True)]}"/>
                  </field>
             </field>
         </record>
@@ -446,9 +461,12 @@
             <field name="product_uom" position="after">
                 <field name="picking_type_id" invisible="1"/>
                 <field name="service_flag" invisible="1"/>
-                  <field name="contract_id" attrs="{'invisible':[('service_flag','=',True)]}"/>
+                <field name="contract_flag" invisible="1"/>
+                  
+                <field name="contract_id" attrs="{'invisible':[('service_flag','=',True),('contract_flag','!=',True)]}"/>
                  
-                  <field name="invoice_flag" attrs="{'invisible':[('service_flag','=',False)]}" />
+                <field name="invoice_flag" attrs="{'invisible':[('service_flag','=',False)]}" />
+                <field name="customer_contract_id" attrs="{'invisible':[('contract_flag','!=',True)],'required':[('contract_flag','=',True)]}"/>
                </field>
             </field>
         </record>         
@@ -514,7 +532,7 @@
                  <field name="arch" type="xml">
                  <field name="barcode_nomenclature_id" position="after">
                  <field name="service_flag"/>
-                 
+                 <field name="contract_flag"/>
                  </field>
                  
                  </field>

@@ -165,11 +165,19 @@ class kts_sla(models.Model):
     problem_priority = fields.Selection([('0','Low'), ('1','Normal'), ('2','High'),('3','higher'),('4','highest'),('5','Very Urgent')], 'Problem Priority')
     no_of_days=fields.Integer(string='No. of Days',)
 
+class kts_contract_history_line(models.Model):
+    _name='kts.contract.history.line'
+    _rec_name='lot_id'
+    move_id=fields.Many2one('stock.move','Stock Move')
+    contract_id=fields.Many2one('kts.contract.customer','Customer Contract')
+    lot_id=fields.Many2one('stock.production.lot')
+
 class kts_contract_customer_inv(models.Model):
     _inherit='kts.contract.customer'
     service_ids=fields.One2many('kts.service.management','invcontract_id',string='service List') 
     end_customer_name=fields.Char('End Customer Name')
     end_customer_mob=fields.Char('End Customer Moblie No')
+    history_lines=fields.One2many('kts.contract.history.line','contract_id',string='History Lines')
     
     @api.multi
     def _get_due_date(self,obj,num):
@@ -232,6 +240,7 @@ class kts_contract_customer_inv(models.Model):
     @api.multi
     def contract_service_create(self,picking_obj):
         lines=[]
+        contract_ids=[]
         for line in picking_obj.pack_operation_product_ids:
             if line.product_id.tracking == 'serial' and line.product_id.type != 'service':
                 for line1 in line.pack_lot_ids:
@@ -244,6 +253,8 @@ class kts_contract_customer_inv(models.Model):
                         if move.contract_id:
                             vals=self._prepare_contract_line(picking_obj.sale_id,move.contract_id,line1.lot_id)
                             contract_id=self.create(vals[0])
+                            contract_ids.append({'contract_id':contract_id,'move_id':move})
+        return contract_ids
     
     @api.onchange('contract_id')
     def onchange_contract_id(self):
@@ -665,6 +676,16 @@ class kts_stock_picking_contract(models.Model):
     _inherit='stock.picking'
     service_id=fields.Many2one('kts.service.management','Service')
     service_flag=fields.Boolean(related='picking_type_id.service_flag',string='Service Flag')    
+    contract_flag=fields.Boolean(related='picking_type_id.contract_flag',string='Contract Flag')
+    
+    @api.multi
+    def action_confirm(self):
+        if self.contract_flag and self.picking_type_id.code=='outgoing':
+            for line in move_lines:
+                if line.product_uom_qty > 1.0:
+                    raise UserError(_('Please select product qty 1 for validation'))
+        else:
+            return super(kts_stock_picking_contract, self).action_confirm()        
     
     @api.multi
     def do_new_transfer(self):
@@ -675,9 +696,20 @@ class kts_stock_picking_contract(models.Model):
                     for pack in self.pack_operation_ids:
                         if self.product_id and self.product_id.tracking != 'none':
                             raise UserError(_('Some products require lots, so you need to specify those first!'))
-        if self.picking_type_id.code=='outgoing':
+        
+        if self.picking_type_id.code=='outgoing' and not self.service_flag and not self.contract_flag:
            picking_obj=self
-           self.env['kts.contract.customer'].contract_service_create(self) 
+           contract_ids=self.env['kts.contract.customer'].contract_service_create(self) 
+           for line in contract_ids:
+               line['contract_id'].write({'history_lines':[0,0,{'move_id':line['move_id'].id,'lot_id':line['contract_id'].lot_ids.id}]}) 
+           
+        
+        elif self.picking_type_id.code=='outgoing' and self.contract_flag:
+             for line in self.move_lines:
+                 if line.customer_contract_id:
+                     if line.product_uom_qty > 1.0:
+                         raise UserError(_('Please select product qty 1 for validation'))
+                     line.customer_contract_id.write({'history_lines':[0,0,{'move_id':line.id,'lot_id':line.lot_ids.ids[0]}]})     
         res=super(kts_stock_picking_contract, self).do_new_transfer()
         return res
 
@@ -686,6 +718,8 @@ class kts_contract_stock_move(models.Model):
     contract_id=fields.Many2one('kts.contract',string='Contract')        
     service_flag=fields.Boolean(related='picking_type_id.service_flag',string='Service Flag')
     invoice_flag=fields.Boolean('Invoice Service',default=False)
+    contract_flag=fields.Boolean(related='picking_type_id.contract_flag',string='Contract Flag')
+    customer_contract_id = fields.Many2one('kts.contract.customer',string="Customer Contract")    
 
 class ProcurementOrder(models.Model):
     _inherit = "procurement.order"
@@ -737,6 +771,7 @@ class kts_service_logged(models.Model):
 class kts_service_picking_type(models.Model):
     _inherit='stock.picking.type'
     service_flag=fields.Boolean('Service Picking',default=False)
+    contract_flag=fields.Boolean('Contract Picking', default=False)
 
 class kts_service_account_invoice(models.Model):
     _inherit='account.invoice'
