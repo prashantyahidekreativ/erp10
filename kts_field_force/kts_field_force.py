@@ -142,6 +142,7 @@ class kts_fieldforce_employee_location(models.Model):
 class kts_fieldforce_employee_device(models.Model):     
     _name = 'kts.fieldforce.employee.device'
     _rec_name='name'   
+    
     employee = fields.Many2one('hr.employee', 'Employee')
     name = fields.Char(related='employee.name',string='Name', readonly=True, store=True)
     device_id = fields.Char('Device ID', required=True)
@@ -162,8 +163,14 @@ class kts_fieldforce_employee_device(models.Model):
         self.create({'employee':emp_id.id,'device_id':device_id,'user_id':user_id,'gprs_state':True})
         self.env['stock.location'].create({'name':emp_id.name,'usage':'internal','location_id':11,'emp_id':emp_id.id})
         return True        
-
-
+    
+    @api.model
+    def get_gprs_state(self,val):
+        uid=self._uid
+        emp_id = self.env['hr.employee'].search([('user_id','=',uid)])       
+        ret=self.search([('employee','=',emp_id.id)])
+        ret.write({'gprs_state':val})
+        return {'key':True}
 
 class kts_fieldforce_employee_tracking_shift(models.Model):
     _name = 'kts.fieldforce.employee.tracking.shift'

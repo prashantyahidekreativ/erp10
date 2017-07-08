@@ -666,4 +666,15 @@
             parent="kts_contract_management.menu_kts_contract_root"    
             sequence="30"/> 
        
+       <record id="kts_contract_customer_search_filter" model="ir.ui.view">
+        <field name="name">kts.contract.customer.search.filter.form</field>
+        <field name="model">kts.contract.customer</field>
+        <field name="inherit_id" ref="kts_contract_management.view_customer_contract_filter"/>
+                <field name="arch" type="xml">
+                <field name="partner_id" position="after">
+                  <field name="history_lines" string="History Lot"/>
+                
+                </field>
+                </field>
+       </record> 
 </odoo>    

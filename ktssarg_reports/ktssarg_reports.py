@@ -30,6 +30,9 @@ MM_UOM_ID=51
 INCH_UOM_ID=68
 from odoo import models,api,fields, _
 from pytz import timezone
+import sys
+reload(sys)
+sys.setdefaultencoding('utf8')
 #define system folders
 CUSTOMERS='Customers'
 EXPORT_CUSTOMERS='Customers -Export'
@@ -354,16 +357,18 @@ def get_report_types(self):
     report_types.append(('voucher','Voucher'))
     report_types.append(('inventory_incoming_shipments','Inventory Incoming Shipments'))
     report_types.append(('inventory_incoming_shipments','Inventory Incoming Shipments'))
+    report_types.append(('Historical Stock List',' Historical Stock List'))
     
    
    
     report_types.sort()
     only_qury=[]
-    if user==SUPERUSER_ID:
+    if self._uid==SUPERUSER_ID:
         only_qury.append( ('sale_register_summary_01','Sale Register Summary 01') )
         only_qury.append( ('sale_register_summary_02','Sale Register Summary 02') )
         only_qury.append( ('quotation_rejection_analysis','Quotation Rejection Analysis') )
-
+        only_qury.append(('Historical Stock List',' Historical Stock List'))
+        
         def getKey(item): 
             return item[0]
         only_qury=sorted(only_qury, key=getKey)
@@ -377,6 +382,10 @@ def get_report_types(self):
 def modification_date(filename):
     t = os.path.getmtime(filename)
     return datetime.fromtimestamp(t)
+def getSelectedItem(self,field,value):
+    if value=='' or value==False:
+        return ''
+    return dict(self.fields_get([field])[field]['selection'])[value]
 
 class kts_report_uitlity(models.Model):
     _name = "kts.report_uitlity"
@@ -387,6 +396,14 @@ class kts_report_uitlity(models.Model):
     def get_report_types(self):
         return get_report_types(self)
 
+
+class query_model(models.Model):
+    _name="kts.report.query"
+    
+    query_name=fields.Char("Name of Query")
+    query =fields.Text("Query")
+    
+    
 
 class kts_report_aeroo(models.Model):
     
@@ -400,7 +417,26 @@ class kts_report_aeroo(models.Model):
     write_date = fields.Datetime('Date Modified', readonly=True)
     write_uid =  fields.Many2one('res.users', 'Last Modification User', readonly=True)        
     
-
+    @api.multi 
+    def get_update_query(self):
+        import glob, os
+        import os,sys,os.path, time
+        curr_dir = os.path.dirname(os.path.realpath(__file__))  
+        curr_dir= curr_dir+'/reports/'
+        
+        os.chdir(curr_dir)
+        for file in glob.glob("*.txt"):
+            f=open(curr_dir+file,'r')
+            query=f.read()
+            name=file.replace(".txt", "")
+            
+            res=self.env['kts.report.query'].search([('query_name','=',name)])
+            if not res:
+                self.env['kts.report.query'].create({'query_name':name,'query':query})
+            else:
+                res.write({'query':query})
+  
+   
     @api.multi 
     def to_update_file_name(self):
         self.ensure_one()
@@ -440,6 +476,7 @@ class kts_report_aeroo(models.Model):
         if create_report:     
             message = 'Following reports created:\n    %s \n'% (r)
         
+        self.get_update_query()
         super(kts_report_aeroo, self).write({'update_info':message})
         return True
     
@@ -786,6 +823,9 @@ class kts_account_report(models.Model):
            elif self.report_type=='envelope_print':
                report_name= 'envelope_print'    
                report_name1='envelope_print'
+           elif self.report_type=='trail_balance':
+               report_name= 'Trail Balance'    
+               report_name1='trail_balance'   
               
            return do_print_setup(self, {'name':report_name1, 'model':'kts.account.report','report_name':report_name},
                 False,False)
@@ -2048,7 +2088,7 @@ class kts_inventory_reports(models.Model):
                             'aa.categ_id, '
                             'case when COALESCE(cc.picking,\'NOT\')=\'NOT\' then bb.production_name else cc.picking end as document ' 
                             'from '
-                            '(select a.product_id, a.qty, a.reservation_id, b.raw_material_production_id, b.production_id, b.picking_id, c.name_template as product_name, d.categ_id '
+                            '(select a.product_id, a.qty, a.reservation_id, b.raw_material_production_id, b.production_id, b.picking_id, d.name as product_name, d.categ_id '
                             'from stock_quant a, stock_move b, product_product c, product_template d  where a.location_id=\'%s\' ' 
                             'and reservation_id is not null and a.reservation_id=b.id and a.product_id=c.id and c.product_tmpl_id=d.id) aa '
                             'left outer join '
@@ -2075,13 +2115,17 @@ class kts_inventory_reports(models.Model):
     
     def total_dispatch_summary(self):
         lines=[]
+        self.report_type
         date_start=self.date_start
         date_stop=self.date_stop
-        self.env.cr.execute('select b.name_template, sum(a.product_uom_qty), sum(a.product_uom_qty*a.price_unit) '  
-                                 'from stock_move a, product_product b '  
-                                 'where a.state = \'done\' and a.location_id=12 and a.location_dest_id=9 and a.product_id=b.id  and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') >= %s and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') <= %s '   
-                                 'group by a.product_id, b.name_template ' 
-                                 'Order by a.product_id ',(date_start,date_stop)) 
+        res=self.env['kts.report.query'].search([('query_name','=',self.report_type)])
+        query=res.query
+        self.env.cr.execute(query,(date_start,date_stop))
+#         self.env.cr.execute('select b.name_template, sum(a.product_uom_qty), sum(a.product_uom_qty*a.price_unit) '  
+#                                  'from stock_move a, product_product b '  
+#                                  'where a.state = \'done\' and a.location_id=12 and a.location_dest_id=9 and a.product_id=b.id  and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') >= %s and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') <= %s '   
+#                                  'group by a.product_id, b.name_template ' 
+#                                  'Order by a.product_id ',(date_start,date_stop)) 
         move_lines = self.env.cr.fetchall()
         i=0
         total=0.0
@@ -2107,11 +2151,15 @@ class kts_inventory_reports(models.Model):
         lines=[]
         date_start=self.date_start
         date_stop=self.date_stop
-        self.env.cr.execute('select b.name_template, sum(a.product_uom_qty), sum(a.product_uom_qty*a.price_unit) '  
-                                 'from stock_move a, product_product b '  
-                                 'where a.state = \'done\' and a.location_id=8 and a.location_dest_id=12 and a.product_id=b.id  and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') >= %s and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') <= %s '   
-                                 'group by a.product_id, b.name_template ' 
-                                 'Order by a.product_id ',(date_start,date_stop)) 
+        res=self.env['kts.report.query'].search([('query_name','=',self.report_type)])
+        query=res.query
+        self.env.cr.execute(query,(date_start,date_stop))
+        
+#         self.env.cr.execute('select b.name_template, sum(a.product_uom_qty), sum(a.product_uom_qty*a.price_unit) '  
+#                                  'from stock_move a, product_product b '  
+#                                  'where a.state = \'done\' and a.location_id=8 and a.location_dest_id=12 and a.product_id=b.id  and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') >= %s and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') <= %s '   
+#                                  'group by a.product_id, b.name_template ' 
+#                                  'Order by a.product_id ',(date_start,date_stop)) 
         move_lines = self.env.cr.fetchall()
         i=0
         total=0.0
@@ -2157,32 +2205,36 @@ class kts_inventory_reports(models.Model):
         date_start=self.date_start
         date_stop=self.date_stop
         lines=[]
-        self.env.cr.execute('select ' 
-                            'aa.schedule_date, '
-                            'case when COALESCE(bb.partner,\'NOT\')=\'NOT\' then cc.partner else bb.partner end as partner, '
-                            'COALESCE(bb.po,\'NA\') as po, '
-                            'COALESCE(bb.po_date,\'2000-01-01\') as po_date, '
-                            'aa.shipment, '
-                            'aa.product_name, '
-                            'aa.product_qty, '
-                            'aa.uom  from '
-                            '(select a.purchase_new_id, a.partner_id, a.name as shipment, d.name_template as product_name, b.product_qty, e.name as uom, to_date(to_char(b.date_expected,\'DDMMYYYY\'),\'DDMMYYYY\') ' 
-                            'as schedule_date from stock_picking a, stock_move b, stock_picking_type c, product_product d, product_uom e '
-                            'where '
-                            'a.id=b.picking_id and '
-                            'a.picking_type_id=c.id and '
-                            'c.code=\'incoming\' and '
-                            'b.product_id=d.id and '
-                            'b.product_uom=e.id and '
-                            'a.state not in (\'done\',\'draft\',\'cancel\') and '
-                            'b.state not in (\'done\',\'draft\',\'cancel\') and '
-                            'to_date(to_char(b.date_expected,\'DDMMYYYY\'),\'DDMMYYYY\') between %s and %s) aa '
-                            'left outer join '
-                            '(select a.id, b.name as partner, a.name as po, to_date(to_char(a.date_order,\'DDMMYYYY\'),\'DDMMYYYY\') as po_date  from purchase_order a, res_partner b where a.partner_id=b.id) bb on aa.purchase_new_id = bb.id '
-                            'left outer join '
-                            '(select name as partner, id from res_partner) cc on aa.partner_id=cc.id '
-                            'Order by aa.schedule_date, case when COALESCE(bb.partner,\'NOT\')=\'NOT\' then cc.partner else bb.partner end, COALESCE(bb.po,\'NA\') ',(date_start,date_stop))
-    
+        res=self.env['kts.report.query'].search([('query_name','=',self.report_type)])
+        query=res.query
+        self.env.cr.execute(query,(date_start,date_stop))
+        
+#         self.env.cr.execute('select ' 
+#                             'aa.schedule_date, '
+#                             'case when COALESCE(bb.partner,\'NOT\')=\'NOT\' then cc.partner else bb.partner end as partner, '
+#                             'COALESCE(bb.po,\'NA\') as po, '
+#                             'COALESCE(bb.po_date,\'2000-01-01\') as po_date, '
+#                             'aa.shipment, '
+#                             'aa.product_name, '
+#                             'aa.product_qty, '
+#                             'aa.uom  from '
+#                             '(select a.purchase_new_id, a.partner_id, a.name as shipment, d.name_template as product_name, b.product_qty, e.name as uom, to_date(to_char(b.date_expected,\'DDMMYYYY\'),\'DDMMYYYY\') ' 
+#                             'as schedule_date from stock_picking a, stock_move b, stock_picking_type c, product_product d, product_uom e '
+#                             'where '
+#                             'a.id=b.picking_id and '
+#                             'a.picking_type_id=c.id and '
+#                             'c.code=\'incoming\' and '
+#                             'b.product_id=d.id and '
+#                             'b.product_uom=e.id and '
+#                             'a.state not in (\'done\',\'draft\',\'cancel\') and '
+#                             'b.state not in (\'done\',\'draft\',\'cancel\') and '
+#                             'to_date(to_char(b.date_expected,\'DDMMYYYY\'),\'DDMMYYYY\') between %s and %s) aa '
+#                             'left outer join '
+#                             '(select a.id, b.name as partner, a.name as po, to_date(to_char(a.date_order,\'DDMMYYYY\'),\'DDMMYYYY\') as po_date  from purchase_order a, res_partner b where a.partner_id=b.id) bb on aa.purchase_new_id = bb.id '
+#                             'left outer join '
+#                             '(select name as partner, id from res_partner) cc on aa.partner_id=cc.id '
+#                             'Order by aa.schedule_date, case when COALESCE(bb.partner,\'NOT\')=\'NOT\' then cc.partner else bb.partner end, COALESCE(bb.po,\'NA\') ',(date_start,date_stop))
+#     
         
         
         move_lines=self.env.cr.fetchall() 
@@ -2244,9 +2296,9 @@ class kts_inventory_reports(models.Model):
                           'sr_no':i,
                           'customer':(line.partner_id.name if line.partner_id.name else '')+('\n'+line.partner_id.street if line.partner_id.street else'')+(','+line.partner_id.city if line.partner_id.city else ''),
                           'date':line.date_done,
-                          'product':  self.get_product_name(line.move_lines_related),
-                          'qty': self.get_product_qty(line.move_lines_related),
-                          'uom':self.get_product_uom(line.move_lines_related),
+                          'product':  self.get_product_name(line.move_lines),
+                          'qty': self.get_product_qty(line.move_lines),
+                          'uom':self.get_product_uom(line.move_lines),
                           'receiptno':line.name,
                           'so':line.group_id.name,
                           })
@@ -2268,8 +2320,8 @@ class kts_inventory_reports(models.Model):
                           'supplier':line.partner_id.name,
                           'location':line.location_dest_id.name,
                           'date':line.date_done,
-                          'product':  self.get_product_name(line.move_lines_related),
-                          'qty': self.get_product_qty(line.move_lines_related),
+                          'product':  self.get_product_name(line.move_lines),
+                          'qty': self.get_product_qty(line.move_lines),
                           'receiptno':line.name
                           })
         return lines
@@ -2483,56 +2535,60 @@ class kts_inventory_reports(models.Model):
         lines=[]
         location_name=''
         start_date=self.date_start
-        subquery='Order by aaaa.location_id, aaaa.prod_name '
-        if self.location_id1.id:
-           stock_location=self.location_id1.id
-           subquery=' and aaaa.location_id=%s'%(stock_location)
-           subquery+='Order by aaaa.location_id, aaaa.prod_name '
-        self.env.cr.execute('select ' 
-                            'COALESCE(aaaa.location_id,\'0\') as location_id, ' 
-                            'COALESCE(hhhh.stock_location) as stock_location, '
-                            'COALESCE(aaaa.product_id,\'0\') as product_id, ' 
-                            'COALESCE(aaaa.uom_id,\'0\') as uom_id, ' 
-                            'COALESCE(aaaa.prod_name,\'\') as prod_name, ' 
-                            'COALESCE(aaaa.prod_uom,\'\') as prod_uom, ' 
-                            'COALESCE( COALESCE(eeee.prod_incoming_qty_done,\'0\') - COALESCE(dddd.prod_outgoing_qty_done,\'0\'),\'0\') as prod_qty_done '
-                            'from '
-                            '(select aaa.location_id, aaa.product_id, ccc.uom_id, bbb.name_template as prod_name, ddd.name as prod_uom  from ' 
-                            '(select distinct aa.location_id, aa.product_id from ' 
-                            '(select location_id, product_id, date from stock_move '
-                            'where date <= %s ' 
-                            'union ' 
-                            'select location_dest_id as location_id, product_id, date from stock_move '
-                            'where date <= %s) aa) aaa, ' 
-                            'product_product bbb, product_template ccc, product_uom ddd '
-                            'where aaa.product_id=bbb.id and bbb.product_tmpl_id=ccc.id and ccc.uom_id=ddd.id ) aaaa '
-                            'left outer join '
-                            '( ' 
-                            'select a1.product_id, a1.location_sec_id, sum(a1.product_qty * a1.dfactor/a1.efactor) as prod_outgoing_qty_done, a1.uom_id  from '
-                            '(select a.product_id, a.location_id as location_sec_id, a.product_qty, d.factor as dfactor, e.factor as efactor, c.uom_id, a.picking_id '
-                            'from stock_move a, product_product b, product_template c, product_uom d, product_uom e ' 
-                            'where a.product_id=b.id and '
-                            'b.product_tmpl_id=c.id and '
-                            'c.uom_id=d.id and '
-                            'a.state in (\'done\') and a.date <= %s and a.product_uom=e.id) a1 '
-                            'group by a1.product_id, a1.location_sec_id, a1.uom_id) dddd '
-                            'on aaaa.product_id=dddd.product_id and aaaa.location_id=dddd.location_sec_id ' 
-                            'left outer join '
-                            '(select a1.product_id, a1.location_sec_id, sum(a1.product_qty * a1.dfactor/a1.efactor) as prod_incoming_qty_done, a1.uom_id  from '
-                            '(select a.product_id, a.location_dest_id as location_sec_id, a.product_qty, d.factor as dfactor, e.factor as efactor, c.uom_id, a.picking_id '
-                            'from stock_move a, product_product b, product_template c, product_uom d, product_uom e '
-                            'where a.product_id=b.id and '
-                            'b.product_tmpl_id=c.id and '
-                            'c.uom_id=d.id and '
-                            'a.state in (\'done\') and a.date <= %s and a.product_uom=e.id) a1 '
-                            'group by a1.product_id, a1.location_sec_id, a1.uom_id '
-                            ') eeee '
-                            'on aaaa.product_id=eeee.product_id and aaaa.location_id=eeee.location_sec_id ' 
-                            'inner join '
-                            '(select id,name as stock_location from stock_location where usage=\'internal\') hhhh '
-                            'on  aaaa.location_id=hhhh.id '
-                            +subquery
-                            ,(start_date,start_date,start_date,start_date,))
+        res=self.env['kts.report.query'].search([('query_name','=',self.report_type)])
+        query=res.query
+        self.env.cr.execute(query,(start_date,start_date,start_date,start_date))
+        
+#         subquery='Order by aaaa.location_id, aaaa.prod_name '
+#         if self.location_id1.id:
+#            stock_location=self.location_id1.id
+#            subquery=' and aaaa.location_id=%s'%(stock_location)
+#            subquery+='Order by aaaa.location_id, aaaa.prod_name '
+#         self.env.cr.execute('select ' 
+#                             'COALESCE(aaaa.location_id,\'0\') as location_id, ' 
+#                             'COALESCE(hhhh.stock_location) as stock_location, '
+#                             'COALESCE(aaaa.product_id,\'0\') as product_id, ' 
+#                             'COALESCE(aaaa.uom_id,\'0\') as uom_id, ' 
+#                             'COALESCE(aaaa.prod_name,\'\') as prod_name, ' 
+#                             'COALESCE(aaaa.prod_uom,\'\') as prod_uom, ' 
+#                             'COALESCE( COALESCE(eeee.prod_incoming_qty_done,\'0\') - COALESCE(dddd.prod_outgoing_qty_done,\'0\'),\'0\') as prod_qty_done '
+#                             'from '
+#                             '(select aaa.location_id, aaa.product_id, ccc.uom_id, bbb.name_template as prod_name, ddd.name as prod_uom  from ' 
+#                             '(select distinct aa.location_id, aa.product_id from ' 
+#                             '(select location_id, product_id, date from stock_move '
+#                             'where date <= %s ' 
+#                             'union ' 
+#                             'select location_dest_id as location_id, product_id, date from stock_move '
+#                             'where date <= %s) aa) aaa, ' 
+#                             'product_product bbb, product_template ccc, product_uom ddd '
+#                             'where aaa.product_id=bbb.id and bbb.product_tmpl_id=ccc.id and ccc.uom_id=ddd.id ) aaaa '
+#                             'left outer join '
+#                             '( ' 
+#                             'select a1.product_id, a1.location_sec_id, sum(a1.product_qty * a1.dfactor/a1.efactor) as prod_outgoing_qty_done, a1.uom_id  from '
+#                             '(select a.product_id, a.location_id as location_sec_id, a.product_qty, d.factor as dfactor, e.factor as efactor, c.uom_id, a.picking_id '
+#                             'from stock_move a, product_product b, product_template c, product_uom d, product_uom e ' 
+#                             'where a.product_id=b.id and '
+#                             'b.product_tmpl_id=c.id and '
+#                             'c.uom_id=d.id and '
+#                             'a.state in (\'done\') and a.date <= %s and a.product_uom=e.id) a1 '
+#                             'group by a1.product_id, a1.location_sec_id, a1.uom_id) dddd '
+#                             'on aaaa.product_id=dddd.product_id and aaaa.location_id=dddd.location_sec_id ' 
+#                             'left outer join '
+#                             '(select a1.product_id, a1.location_sec_id, sum(a1.product_qty * a1.dfactor/a1.efactor) as prod_incoming_qty_done, a1.uom_id  from '
+#                             '(select a.product_id, a.location_dest_id as location_sec_id, a.product_qty, d.factor as dfactor, e.factor as efactor, c.uom_id, a.picking_id '
+#                             'from stock_move a, product_product b, product_template c, product_uom d, product_uom e '
+#                             'where a.product_id=b.id and '
+#                             'b.product_tmpl_id=c.id and '
+#                             'c.uom_id=d.id and '
+#                             'a.state in (\'done\') and a.date <= %s and a.product_uom=e.id) a1 '
+#                             'group by a1.product_id, a1.location_sec_id, a1.uom_id '
+#                             ') eeee '
+#                             'on aaaa.product_id=eeee.product_id and aaaa.location_id=eeee.location_sec_id ' 
+#                             'inner join '
+#                             '(select id,name as stock_location from stock_location where usage=\'internal\') hhhh '
+#                             'on  aaaa.location_id=hhhh.id '
+#                             +subquery
+#                             ,(start_date,start_date,start_date,start_date,))
         
         move_lines=self.env.cr.fetchall() 
         i=0 
@@ -2595,16 +2651,16 @@ class kts_picking_delivery_chalan(models.Model):
                    for line1 in line.pack_lot_ids: 
                        lines.append({
                           'product':line.product_id.name,
-                          'uom':line.product_uom_id.name,
+                          'uom':line.product_uom.name,
                           'serialno':line1.lot_id.name,
                           'qty_done':qty,
                               })
             else:
                lines.append({
                           'product':line.product_id.name,
-                          'uom':line.product_uom_id.name,
-                          'serialno':'',
-                          'qty_done':line.qty_done,
+                          'uom':line.product_uom.name,
+                          'serialno':line1.lot_id.name,
+                          'qty_done':line.product_uom_qty,
                           })
             return lines
     def print_barcode(self, cr, uid, ids, context={}):
@@ -2697,9 +2753,9 @@ class kts_mrp_reports(models.Model):
     categ_id=fields.Many2one('product.category',string='Product Category')
     
     @api.multi
-    def to_print_mrp(self, cr, uid, ids, context={}):
+    def to_print_mrp(self,):
            self.ensure_one()
-           this = self.browse(cr, uid, ids, context=context) 
+           this = self.browse() 
            if self.report_type=='daily_production':
                report_name= 'daily_production'    
                report_name1='Daily Production'
@@ -2729,7 +2785,7 @@ class kts_mrp_reports(models.Model):
                report_name1='Direct Material Cost Summary'
            
            return do_print_setup(self,{'name':report_name1, 'model':'kts.mrp.reports','report_name':report_name},
-                False,False,)
+                False,)
     
     @api.onchange('date_start','date_stop')
     def onchange_start_end_date(self):
@@ -2871,7 +2927,7 @@ class kts_mrp_reports(models.Model):
                             'as free_qty, '  
                             'aaa.categ_id '
                             'from(select aa.product_id, sum(aa.required_qty) as required_qty, aa.prod_name, aa.uom, sum(COALESCE(bb.reserved_qty,\'0\')) as reserved_qty, aa.categ_id  from '
-                            '(select a.id, b.id as move_id, b.product_id, b.product_uom_qty as required_qty, c.name_template as prod_name, d.name as uom, e.categ_id '
+                            '(select a.id, b.id as move_id, b.product_id, b.product_uom_qty as required_qty, e.name as prod_name, d.name as uom, e.categ_id '
                             'from mrp_production a, stock_move b, product_product c, product_uom d, product_template e '
                             'where to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\') between %s and %s and '
                             'a.id=b.raw_material_production_id and '
@@ -2919,10 +2975,10 @@ class kts_mrp_reports(models.Model):
         subquery=''
         if self.categ_id.id:
             subquery=' and c.categ_id= %s '%(self.categ_id.id)
-        self.env.cr.execute('select b.name_template, sum(a.product_uom_qty), sum(a.product_uom_qty*a.price_unit), c.categ_id '  
+        self.env.cr.execute('select c.name, sum(a.product_uom_qty), sum(a.product_uom_qty*a.price_unit), c.categ_id '  
                                  'from stock_move a, product_product b,  product_template c '  
                                  'where a.state = \'done\' and a.location_id=12 and a.location_dest_id=7 and a.product_id=b.id and b.product_tmpl_id=c.id and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') >= %s and to_date(to_char(a.date,\'DDMMYYYY\'),\'DDMMYYYY\') <= %s '+subquery+   
-                                 'group by a.product_id, b.name_template, c.categ_id  ' 
+                                 'group by a.product_id, c.name, c.categ_id  ' 
                                  'Order by a.product_id, c.categ_id ',(date_start,date_stop)) 
         move_lines = self.env.cr.fetchall()
         i=0
@@ -2949,10 +3005,10 @@ class kts_mrp_reports(models.Model):
         lines=[]
         date_start=self.date_start
         date_stop=self.date_stop
-        self.env.cr.execute('select b.name_template, sum(a.product_qty) '  
-                                 'from mrp_production a, product_product b '  
+        self.env.cr.execute('select c.name, sum(a.product_qty) '  
+                                 'from mrp_production a, product_product b,product_template c '  
                                  'where a.state= \'done\' and a.product_id=b.id  and to_date(to_char(a.date_finished,\'DDMMYYYY\'),\'DDMMYYYY\') >= %s and to_date(to_char(a.date_finished,\'DDMMYYYY\'),\'DDMMYYYY\') <= %s '   
-                                 'group by a.product_id, b.name_template ' 
+                                 'group by a.product_id, c.name ' 
                                  'Order by a.product_id ',(date_start,date_stop)) 
         mrp_move_lines = self.env.cr.fetchall()
         i=0      
@@ -2970,44 +3026,46 @@ class kts_mrp_reports(models.Model):
         lines=[]
         date_start=self.date_start
         date_stop=self.date_stop
-                
-        self.env.cr.execute('select '
-                            'aa.name_template, '
-                            'aa.uom, ' 
-                            'sum(aa.product_qty), '
-                            'aa.mo_date, ' 
-                            'array_to_string(array_agg(aa.MO),\',\') '
-                            'from '
-                            '( '
-                            'select ' 
-                            'b.name_template, '
-                            'c.name as uom, ' 
-                            'sum(d.product_qty) as product_qty, ' 
-                            'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\') as mo_date, ' 
-                            'a.name as MO '
-                            'from ' 
-                            'mrp_production a, ' 
-                            'product_product b, ' 
-                            'product_uom c, '
-                            'stock_move d '
-                            'where ' 
-                            'a.product_id=b.id and ' 
-                            'a.product_uom=c.id and ' 
-                            'a.id=d.production_id and '
-                            'a.product_id=d.product_id and '
-                            'd.state=\'done\' and '
-                            'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\') between %s and %s '
-                            'group by ' 
-                            'a.product_id, ' 
-                            'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\'), ' 
-                            'b.name_template, '
-                            'c.name, '
-                            'a.name ) aa '
-                            'group by ' 
-                            'aa.name_template, '
-                            'aa.uom, ' 
-                            'aa.mo_date '
-                            'Order by aa.mo_date, aa.name_template ',(date_start,date_stop)) 
+        res=self.env['kts.report.query'].search([('query_name','=',self.report_type)])
+        query=res.query
+        self.env.cr.execute(query,(date_start,date_stop))
+#         self.env.cr.execute('select '
+#                             'aa.name_template, '
+#                             'aa.uom, ' 
+#                             'sum(aa.product_qty), '
+#                             'aa.mo_date, ' 
+#                             'array_to_string(array_agg(aa.MO),\',\') '
+#                             'from '
+#                             '( '
+#                             'select ' 
+#                             'b.name_template, '
+#                             'c.name as uom, ' 
+#                             'sum(d.product_qty) as product_qty, ' 
+#                             'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\') as mo_date, ' 
+#                             'a.name as MO '
+#                             'from ' 
+#                             'mrp_production a, ' 
+#                             'product_product b, ' 
+#                             'product_uom c, '
+#                             'stock_move d '
+#                             'where ' 
+#                             'a.product_id=b.id and ' 
+#                             'a.product_uom=c.id and ' 
+#                             'a.id=d.production_id and '
+#                             'a.product_id=d.product_id and '
+#                             'd.state=\'done\' and '
+#                             'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\') between %s and %s '
+#                             'group by ' 
+#                             'a.product_id, ' 
+#                             'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\'), ' 
+#                             'b.name_template, '
+#                             'c.name, '
+#                             'a.name ) aa '
+#                             'group by ' 
+#                             'aa.name_template, '
+#                             'aa.uom, ' 
+#                             'aa.mo_date '
+#                             'Order by aa.mo_date, aa.name_template ',(date_start,date_stop)) 
                        
         mrp_move_lines = self.env.cr.fetchall()
         for line in mrp_move_lines:  
@@ -3025,109 +3083,112 @@ class kts_mrp_reports(models.Model):
         lines=[]
         date_start=self.date_start
         date_stop=self.date_stop
-        self.env.cr.execute('select '
-                            'aaa.date, ' 
-                            'aaa.product_id, ' 
-                            'ddd.prod_name, ' 
-                            'ddd.uom, ' 
-                            'bbb.mo_plan, ' 
-                            'bbb.plan_qty, ' 
-                            'ccc.produced_qty, ' 
-                            'ccc.produced_mo '
-                            'from '
-                            '(select ' 
-                            'distinct aa.date, aa.product_id '
-                            'from '
-                            '(select ' 
-                            'to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\') as date, ' 
-                            'a.product_id '
-                            'from '
-                            'MRP_production a '
-                            'where '
-                            'a.state!=\'cancel\' '
-                            'union '
-                            'select ' 
-                            'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\') as date, '
-                            'a.product_id '
-                            'from '
-                            'mrp_production a, ' 
-                            'stock_move d '
-                            'where '
-                            'a.id=d.production_id and '
-                            'a.product_id=d.product_id and '
-                            'd.state=\'done\' ) aa ) aaa '
-                            'left outer join '
-                            '(select ' 
-                            'to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\') as date_planned, ' 
-                            'b.id as product_id, '
-                            'b.name_template as product_name, ' 
-                            'array_to_string(array_agg(a.name),\',\')  as mo_plan, ' 
-                            'c.name as uom, '
-                            'sum( case when a.state=\'draft\' then a.product_qty else a.plan_qty end  * d.factor/e.factor ) as plan_qty '
-                            'from '
-                            'MRP_production a, ' 
-                            'product_product b, '
-                            'product_template c, '
-                            'product_uom d, '
-                            'product_uom e '
-                            'where '
-                            'a.product_id=b.id and '
-                            'b.product_tmpl_id=c.id and '
-                            'c.uom_id=d.id and '
-                            'a.product_uom=e.id and '
-                            'a.state!=\'cancel\' '
-                            'group by '
-                            'to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\'), ' 
-                            'b.id, '
-                            'b.name_template, c.name ) bbb on aaa.product_id=bbb.product_id and aaa.date=bbb.date_planned '
-                            'left outer join '
-                            '(select '
-                            'aa.product_id, '
-                            'aa.uom, '
-                            'sum(aa.product_qty) as produced_qty, '
-                            'aa.mo_date as date, '
-                            'array_to_string(array_agg(aa.MO),\',\') as produced_mo '
-                            'from '
-                            '( '
-                            'select ' 
-                            'a.product_id, '
-                            'c.name as uom, '
-                            'sum(d.product_qty * c.factor/e.factor ) as product_qty, ' 
-                            'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\') as mo_date, ' 
-                            'a.name as MO '
-                            'from '
-                            'mrp_production a, ' 
-                            'product_product b, '
-                            'product_uom c, '
-                            'stock_move d, '
-                            'product_uom e, '
-                            'product_template f '
-                            'where '
-                            'a.product_id=b.id and '
-                            'a.product_uom=e.id and '
-                            'a.id=d.production_id and '
-                            'a.product_id=d.product_id and '
-                            'b.product_tmpl_id=f.id and '
-                            'f.uom_id=c.id and '
-                            'd.state=\'done\' '
-                            'group by '
-                            'a.product_id, ' 
-                            'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\'), ' 
-                            'c.name, '
-                            'a.name ) aa '
-                            'group by '
-                            'aa.Product_id, '
-                            'aa.uom, '
-                            'aa.mo_date ) ccc on aaa.product_id=ccc.product_id and aaa.date=ccc.date '
-                            'inner join '
-                            '(select a.id as product_id, c.name as uom, a.name_template as prod_name ' 
-                            'from product_product a, product_template b, product_uom c  '
-                            'where '
-                            'a.product_tmpl_id=b.id and '
-                            'b.uom_id=c.id ) ddd on aaa.product_id=ddd.product_id '
-                            'where aaa.date between %s and %s '
-                            'Order by aaa.date, aaa.product_id, bbb.product_name ',(date_start,date_stop)) 
-                                    
+        res=self.env['kts.report.query'].search([('query_name','=',self.report_type)])
+        query=res.query
+        self.env.cr.execute(query,(date_start,date_stop))
+#         self.env.cr.execute('select '
+#                             'aaa.date, ' 
+#                             'aaa.product_id, ' 
+#                             'ddd.prod_name, ' 
+#                             'ddd.uom, ' 
+#                             'bbb.mo_plan, ' 
+#                             'bbb.plan_qty, ' 
+#                             'ccc.produced_qty, ' 
+#                             'ccc.produced_mo '
+#                             'from '
+#                             '(select ' 
+#                             'distinct aa.date, aa.product_id '
+#                             'from '
+#                             '(select ' 
+#                             'to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\') as date, ' 
+#                             'a.product_id '
+#                             'from '
+#                             'MRP_production a '
+#                             'where '
+#                             'a.state!=\'cancel\' '
+#                             'union '
+#                             'select ' 
+#                             'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\') as date, '
+#                             'a.product_id '
+#                             'from '
+#                             'mrp_production a, ' 
+#                             'stock_move d '
+#                             'where '
+#                             'a.id=d.production_id and '
+#                             'a.product_id=d.product_id and '
+#                             'd.state=\'done\' ) aa ) aaa '
+#                             'left outer join '
+#                             '(select ' 
+#                             'to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\') as date_planned, ' 
+#                             'b.id as product_id, '
+#                             'b.name_template as product_name, ' 
+#                             'array_to_string(array_agg(a.name),\',\')  as mo_plan, ' 
+#                             'c.name as uom, '
+#                             'sum( case when a.state=\'draft\' then a.product_qty else a.plan_qty end  * d.factor/e.factor ) as plan_qty '
+#                             'from '
+#                             'MRP_production a, ' 
+#                             'product_product b, '
+#                             'product_template c, '
+#                             'product_uom d, '
+#                             'product_uom e '
+#                             'where '
+#                             'a.product_id=b.id and '
+#                             'b.product_tmpl_id=c.id and '
+#                             'c.uom_id=d.id and '
+#                             'a.product_uom=e.id and '
+#                             'a.state!=\'cancel\' '
+#                             'group by '
+#                             'to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\'), ' 
+#                             'b.id, '
+#                             'b.name_template, c.name ) bbb on aaa.product_id=bbb.product_id and aaa.date=bbb.date_planned '
+#                             'left outer join '
+#                             '(select '
+#                             'aa.product_id, '
+#                             'aa.uom, '
+#                             'sum(aa.product_qty) as produced_qty, '
+#                             'aa.mo_date as date, '
+#                             'array_to_string(array_agg(aa.MO),\',\') as produced_mo '
+#                             'from '
+#                             '( '
+#                             'select ' 
+#                             'a.product_id, '
+#                             'c.name as uom, '
+#                             'sum(d.product_qty * c.factor/e.factor ) as product_qty, ' 
+#                             'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\') as mo_date, ' 
+#                             'a.name as MO '
+#                             'from '
+#                             'mrp_production a, ' 
+#                             'product_product b, '
+#                             'product_uom c, '
+#                             'stock_move d, '
+#                             'product_uom e, '
+#                             'product_template f '
+#                             'where '
+#                             'a.product_id=b.id and '
+#                             'a.product_uom=e.id and '
+#                             'a.id=d.production_id and '
+#                             'a.product_id=d.product_id and '
+#                             'b.product_tmpl_id=f.id and '
+#                             'f.uom_id=c.id and '
+#                             'd.state=\'done\' '
+#                             'group by '
+#                             'a.product_id, ' 
+#                             'to_date(to_char(d.date,\'DDMMYYYY\'),\'DDMMYYYY\'), ' 
+#                             'c.name, '
+#                             'a.name ) aa '
+#                             'group by '
+#                             'aa.Product_id, '
+#                             'aa.uom, '
+#                             'aa.mo_date ) ccc on aaa.product_id=ccc.product_id and aaa.date=ccc.date '
+#                             'inner join '
+#                             '(select a.id as product_id, c.name as uom, a.name_template as prod_name ' 
+#                             'from product_product a, product_template b, product_uom c  '
+#                             'where '
+#                             'a.product_tmpl_id=b.id and '
+#                             'b.uom_id=c.id ) ddd on aaa.product_id=ddd.product_id '
+#                             'where aaa.date between %s and %s '
+#                             'Order by aaa.date, aaa.product_id, bbb.product_name ',(date_start,date_stop)) 
+#                                     
         mrp_move_lines=self.env.cr.fetchall()
         
         for line in mrp_move_lines:
@@ -3147,9 +3208,9 @@ class kts_mrp_reports(models.Model):
         date_start=self.date_start
         date_stop=self.date_stop
         self.env.cr.execute('select ' 
-                            'to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\') as date_planned, ' 
+                            'to_date(to_char(a.date_planned_start,\'DDMMYYYY\'),\'DDMMYYYY\') as date_planned, ' 
                             'b.id, '
-                            'b.name_template as product_name, ' 
+                            'c.name as product_name, ' 
                             'a.name as mo_name, '
                             'd.name as uom, '
                             'case when a.state=\'draft\' then a.product_qty else a.plan_qty end  * d.factor/e.factor '
@@ -3165,9 +3226,9 @@ class kts_mrp_reports(models.Model):
                             'c.uom_id=d.id and '
                             'a.product_uom=e.id and '
                             'a.state!=\'cancel\' and '
-                            'to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\') between %s and %s'
+                            'to_date(to_char(a.date_planned_start,\'DDMMYYYY\'),\'DDMMYYYY\') between %s and %s'
                             'order by '
-                            'to_date(to_char(a.date_planned,\'DDMMYYYY\'),\'DDMMYYYY\'), ' 
+                            'to_date(to_char(a.date_planned_start,\'DDMMYYYY\'),\'DDMMYYYY\'), ' 
                             'b.id',(date_start,date_stop))
         
         
@@ -3343,28 +3404,26 @@ class kts_sale_reports(models.Model):
                        })   
         return super(kts_sale_reports, self).write(vals)
     @api.multi
-    def to_print_sale(self, cr, uid, ids, context={}):
-           self.ensure_one()
-           ret=False
-           if self.report_type=='total_so_summary':
-               report_name= 'total_so_summary'    
-               report_name1='Total Sale Order Summary'
-           elif self.report_type=='sale_price_variance':
-                report_name= 'sale_price_variance'    
-                report_name1='Sale Price Variance Report'  
-        
-           else:
-            ret=super(kts_inventory_reports_bin, self).to_print_inventory()
-        
-           if ret:
-              return ret
-           else:
-              return do_print_setup(self, {'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},
-                False,False)
-    
-           
-           return do_print_setup(self,{'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},
-                False,False)
+    def to_print_sale(self):
+               self.ensure_one()
+               ret=False
+               if self.report_type=='total_so_summary':
+                   report_name= 'total_so_summary'    
+                   report_name1='Total Sale Order Summary'
+               elif self.report_type=='sale_price_variance':
+                    report_name= 'sale_price_variance'    
+                    report_name1='Sale Price Variance Report'  
+            
+               else:
+                 ret=super(kts_sale_reports,self).to_print_sale()
+            
+               if ret:
+                  return ret
+               else:
+                  return do_print_setup(self,{'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},False,False)
+            
+               
+               return do_print_setup(self,{'name':report_name1, 'model':'kts.sale.reports','report_name':report_name},False,False)
     
     
     def sale_price_variance(self):
@@ -3373,16 +3432,16 @@ class kts_sale_reports(models.Model):
         date_stop=self.date_stop
         self.env.cr.execute('select '
                             'min(aa.price_unit), max(aa.price_unit), sum(aa.weighted_cost)/sum(aa.product_uom_qty), ' 
-                            'aa.product_id, aa.name_template ' 
-                            'from'
+                            'aa.product_id, aa.name ' 
+                            'from ' 
                             '(select '
-                            'b.product_id, b.price_unit, b.product_uom_qty, b.product_uom_qty*b.price_unit as weighted_cost, c.name_template '
+                            'b.product_id, b.price_unit, b.product_uom_qty, b.product_uom_qty*b.price_unit as weighted_cost, d.name '
                             'from '
-                            'sale_order a, sale_order_line b, product_product c '
+                            'sale_order a, sale_order_line b, product_product c, product_template d '
                             'where '
                             'a.id=b.order_id and '
                             'date_order between %s and %s and b.product_id=c.id) aa '
-                            'group by aa.product_id, aa.name_template',(date_start,date_stop))
+                            'group by aa.product_id, aa.name',(date_start,date_stop))
         move_lines=self.env.cr.fetchall()
         i=0
         for line in move_lines:
@@ -3401,10 +3460,10 @@ class kts_sale_reports(models.Model):
         lines=[]
         date_start=self.date_start
         date_stop=self.date_stop
-        self.env.cr.execute('select b.name_template, sum(a.product_uom_qty), sum(a.price_subtotal) '  
-                                 'from sale_order_line a, product_product b, sale_order c  '  
+        self.env.cr.execute('select d.name, sum(a.product_uom_qty), sum(a.price_subtotal) '  
+                                 'from sale_order_line a, product_product b, sale_order c,product_template d  '  
                                  'where a.order_id=c.id and c.state in (\'sale\',\'done\') and a.product_id=b.id  and to_date(to_char(c.date_order,\'DDMMYYYY\'),\'DDMMYYYY\') >= %s and to_date(to_char(c.date_order,\'DDMMYYYY\'),\'DDMMYYYY\') <= %s '   
-                                 'group by a.product_id, b.name_template ' 
+                                 'group by a.product_id, d.name ' 
                                  'Order by a.product_id ',(date_start,date_stop)) 
         move_lines = self.env.cr.fetchall()
         i=0
@@ -3530,10 +3589,10 @@ class kts_purchase_reports(models.Model):
         lines=[]
         date_start=self.date_start
         date_stop=self.date_stop
-        self.env.cr.execute('select b.name_template, sum(a.product_qty), sum(a.price_subtotal) '  
-                                 'from purchase_order_line a, product_product b, purchase_order c  '  
+        self.env.cr.execute('select d.name, sum(a.product_qty), sum(a.price_subtotal) '  
+                                 'from purchase_order_line a, product_product b, purchase_order c,product_template d  '  
                                  'where a.order_id=c.id and c.state in (\'purchase\',\'done\') and a.product_id=b.id  and to_date(to_char(c.date_order,\'DDMMYYYY\'),\'DDMMYYYY\') >= %s and to_date(to_char(c.date_order,\'DDMMYYYY\'),\'DDMMYYYY\') <= %s '   
-                                 'group by a.product_id, b.name_template ' 
+                                 'group by a.product_id, d.name ' 
                                  'Order by a.product_id ',(date_start,date_stop)) 
         move_lines = self.env.cr.fetchall()
         i=0
