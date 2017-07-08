@@ -704,7 +704,9 @@ class kts_stock_picking_contract(models.Model):
            picking_obj=self
            contract_ids=self.env['kts.contract.customer'].contract_service_create(self) 
            for line in contract_ids:
-               line['contract_id'].write({'history_lines':[0,0,{'move_id':line['move_id'].id,'lot_id':line['contract_id'].lot_ids.id}]}) 
+               move_id=line['move_id']
+               contract=line['contract_id']
+               contract.write({'history_lines':[(0,0,{'move_id':move_id.id,'lot_id':contract.lot_ids.id})]}) 
            
         
         elif self.picking_type_id.code=='outgoing' and self.contract_flag:
