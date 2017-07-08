@@ -684,7 +684,7 @@ class kts_stock_picking_contract(models.Model):
     @api.multi
     def action_confirm(self):
         if self.contract_flag and self.picking_type_id.code=='outgoing':
-            for line in move_lines:
+            for line in self.move_lines:
                 if line.product_uom_qty > 1.0:
                     raise UserError(_('Please select product qty 1 for validation'))
         else:
