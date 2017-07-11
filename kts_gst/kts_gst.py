@@ -136,30 +136,30 @@ class kts_gst_fiscal_position(models.Model):
                     raise UserError(_('Product %s not having hsn code please add hsn code')% product.name)
                 if (line.gst_account_code_id.id != product.hsn_id.gst_account_id.id): 
                    tax_obj=self.env['account.tax']
-                   gst_acc_code=product.hsn_id.gst_account_id if product.hsn_id else product.categ_id.hsn_idgst_account_id  
+                   gst_acc_code=product.hsn_id.gst_account_id if product.hsn_id else product.categ_id.hsn_id.gst_account_id  
                    
                    cgst=gst_acc_code.cgst
                    sgst=gst_acc_code.sgst
                    igst=gst_acc_code.igst
-                   if self.gst_apply == 'inter' and  self.type=='out_invoice':    
+                   if self.gst_apply == 'intra' and  self.type=='out_invoice':    
                        domain=[('type_tax_use','=','sale'),
                                ('gst_account_code_id','=',gst_acc_code.id),
                                ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
                        tax_add_ids = tax_obj.search(domain)
                        return tax_add_ids
-                   elif self.gst_apply == 'intra' and  self.type=='out_invoice':
+                   elif self.gst_apply == 'inter' and  self.type=='out_invoice':
                         domain=[('type_tax_use','=','sale'),
                                ('gst_account_code_id','=',gst_acc_code.id),
                                ('gst_type','=','igst'),('amount','=',igst)]
                         tax_add_ids = tax_obj.search(domain)    
                         return tax_add_ids
-                   elif self.gst_apply == 'inter' and  self.type=='in_invoice':    
+                   elif self.gst_apply == 'intra' and  self.type=='in_invoice':    
                        domain=[('type_tax_use','=','purchase'),
                                ('gst_account_code_id','=',gst_acc_code.id),
                                ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
                        tax_add_ids = tax_obj.search(domain)
                        return tax_add_ids
-                   elif self.gst_apply == 'intra' and  self.type=='in_invoice':
+                   elif self.gst_apply == 'inter' and  self.type=='in_invoice':
                         domain=[('type_tax_use','=','purchase'),
                                ('gst_account_code_id','=',gst_acc_code.id),
                                ('gst_type','=','igst'),('amount','=',igst)]
@@ -247,14 +247,14 @@ class kts_gst_account_invoice(models.Model):
            
            elif self.company_id.state_code != delivery_addr.state_id.code:   
               inv_type = self.type
-              domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
+              domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
            
               res = self.env['account.fiscal.position'].search(domain)
               self.update(values)
               return {'value':values,'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
            else:
                inv_type = self.type
-               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
+               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
            
                res = self.env['account.fiscal.position'].search(domain)
                self.update(values)
@@ -277,13 +277,13 @@ class kts_gst_account_invoice(models.Model):
                   inv_type = str(self.type)
                   delivery_addr = self.partner_shipping_id
                   if self.company_id.state_code != delivery_addr.state_id.code:   
-                      domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
+                      domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
                    
                       res = self.env['account.fiscal.position'].search(domain)
                       return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
                   else:
                        inv_type = self.type
-                       domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
+                       domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
                    
                        res = self.env['account.fiscal.position'].search(domain)
                        return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
@@ -406,7 +406,7 @@ class kts_gst_sale_order(models.Model):
            elif self.company_id.state_code != delivery_addr.state_id.code:   
               inv_type='out_invoice'  
    
-              domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
+              domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
            
               res = self.env['account.fiscal.position'].search(domain)
               self.update(values)
@@ -414,7 +414,7 @@ class kts_gst_sale_order(models.Model):
            else:
                inv_type='out_invoice'  
    
-               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
+               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
            
                res = self.env['account.fiscal.position'].search(domain)
                self.update(values)
@@ -438,13 +438,13 @@ class kts_gst_sale_order(models.Model):
    
                   delivery_addr = self.partner_shipping_id
                   if self.company_id.state_code != delivery_addr.state_id.code:   
-                      domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
+                      domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
                    
                       res = self.env['account.fiscal.position'].search(domain)
                       return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
                   else:
                     
-                       domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
+                       domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
                    
                        res = self.env['account.fiscal.position'].search(domain)
                        return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
@@ -577,7 +577,7 @@ class kts_gst_purchase_order(models.Model):
            elif self.company_id.state_code != delivery_addr.state_id.code:   
               inv_type='in_invoice'  
    
-              domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
+              domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
            
               res = self.env['account.fiscal.position'].search(domain)
               self.update(values)
@@ -585,7 +585,7 @@ class kts_gst_purchase_order(models.Model):
            else:
                inv_type='in_invoice'  
    
-               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
+               domain = ['&',('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
            
                res = self.env['account.fiscal.position'].search(domain)
                self.update(values)
@@ -609,13 +609,13 @@ class kts_gst_purchase_order(models.Model):
    
                   delivery_addr = self.partner_shipping_id
                   if self.company_id.state_code != delivery_addr.state_id.code:   
-                      domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
+                      domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
                    
                       res = self.env['account.fiscal.position'].search(domain)
                       return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }
                   else:
                     
-                       domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','inter')]
+                       domain = [('type', '=', inv_type),('tax_type','=','gst'),('gst_apply','=','intra')]
                    
                        res = self.env['account.fiscal.position'].search(domain)
                        return {'domain':{'fiscal_position_id':[('id','in',res.ids)]} }

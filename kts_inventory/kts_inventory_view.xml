@@ -24,11 +24,12 @@
                          <field name="expiry_date" invisible="not context.get('only_create', False)" readonly="0"/>
                    </xpath>  
                  
-                   <!--    
+                      
                    <field name="pack_lot_ids" position="attributes">
                    <attribute name="attrs">{'readonly':['|',('autoserial_lot_gen','=',True),('state', '=', 'done')]}</attribute>
+                   <attribute name="options">{'no_create':True}</attribute>
                    </field>
-                     -->
+                     
             </field>
     </record>     
     <record id="kts_stock_production_lot_form" model="ir.ui.view">

@@ -687,8 +687,8 @@ class kts_stock_picking_contract(models.Model):
             for line in self.move_lines:
                 if line.product_uom_qty > 1.0:
                     raise UserError(_('Please select product qty 1 for validation'))
-        else:
-            return super(kts_stock_picking_contract, self).action_confirm()        
+        
+        return super(kts_stock_picking_contract, self).action_confirm()        
     
     @api.multi
     def do_new_transfer(self):
@@ -714,7 +714,13 @@ class kts_stock_picking_contract(models.Model):
                  if line.customer_contract_id:
                      if line.product_uom_qty > 1.0:
                          raise UserError(_('Please select product qty 1 for validation'))
-                     line.customer_contract_id.write({'history_lines':[0,0,{'move_id':line.id,'lot_id':line.lot_ids.ids[0]}]})     
+                     line.customer_contract_id.write({'history_lines':[(0,0,{'move_id':line.id,'lot_id':line.lot_ids.id})]})     
+        elif self.picking_type_id.code=='incoming':
+            for line in self.move_lines:
+                if line.contract_id:
+                    history_lines =self.env['kts.contract.history.line'].search([('move_id','=',line.origin_returned_move_id.id),('lot_id','in',line.lot_ids.ids)])
+                    for line1 in history_lines:
+                        line1.contract_id.write({'history_lines':[(0,0,{'move_id':line.id,'lot_id':line1.lot_id.id})]})
         res=super(kts_stock_picking_contract, self).do_new_transfer()
         return res
 

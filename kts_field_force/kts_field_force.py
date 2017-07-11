@@ -23,7 +23,7 @@ class kts_fieldforce_stock_location(models.Model):
 
 class kts_fieldforce_employee(models.Model):
     _name = "kts.fieldforce.employee"
-    _rec_name = 'last_location'
+    _rec_name = 'name'
     _order = "last_location desc"    
     
     
@@ -31,16 +31,20 @@ class kts_fieldforce_employee(models.Model):
     employee = fields.Many2one(related='employee_device.employee',string='Employee', store=True, readonly=True)
     name = fields.Char(related='employee.name', string='Name', readonly=True, store=True)
     last_location = fields.Char('Last Location', readonly=True)
-    write_date = fields.Datetime('Last Seen', readonly=True)              
+               
     location_latitude =  fields.Float('Latitude', digits=(12,6))
     location_longitude = fields.Float('Longitude', digits=(12,6))
     on_leave = fields.Boolean(compute='_get_leave_status',string='Employee Leave Status')                
     previous_locations = fields.One2many('kts.fieldforce.employee.location', 'employee_location_rel', 'Previous Locations')
     create_date = fields.Datetime('Last Seen', readonly=True)                
     device_state = fields.Boolean(related='employee_device.gprs_state',string='GPS Sate', readonly=True, store=True)
-    filter_date = fields.Date('Filter Date',default=fields.Datetime.now())
-    live_track = fields.Boolean('Live Track', default=False)
+    #filter_date = fields.Date('Filter Date',default=fields.Datetime.now())
+    filter_date1 = fields.Date('Filter Date',compute='compute_date',readonly=False) 
+    last_update_date=fields.Datetime('Last Seen')
     
+    def compute_date(self):
+        for record in self:
+            record.filter_date1=fields.Datetime.now()
     @api.one
     def get_address(self,addr):
             url = 'http://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=true' %(addr['location_latitude'],addr['location_longitude'])
@@ -53,7 +57,11 @@ class kts_fieldforce_employee(models.Model):
                 return False
         
             try:
-                return result['results'][0]['formatted_address']
+                if result['results'][0]['formatted_address']: 
+                   res = result['results'][0]['formatted_address']
+                   return res.encode("utf-8")
+                else:
+                    return ''
             except (KeyError, ValueError):
                 return False
     @api.model
@@ -68,24 +76,25 @@ class kts_fieldforce_employee(models.Model):
             lon=vals.get('location_longitude')
         if vals.get('location_latitude') and vals.get('location_longitude'):
             addr = self.get_address({'location_latitude':lat,'location_longitude':lon})
-            vals.update({'last_location':addr[0].encode('UTF8')})      
-            loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':device_id.id,'employee_location_rel':self.id,'last_location':addr[0].encode('UTF8')})        
+            vals.update({'last_location':addr})      
+            loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':device_id.id,'employee_location_rel':self.id,'last_location':addr})        
+        vals.update({'last_update_date':fields.Datetime.now(),})
         return super(kts_fieldforce_employee, self).create(vals)    
     
     
     @api.multi
     def write(self,vals):
-        
         if vals.get('location_latitude'):
             lat = vals.get('location_latitude')
         if vals.get('location_longitude'):
             lon=vals.get('location_longitude')
         if vals.get('location_latitude') and vals.get('location_longitude'):
             addr = self.get_address({'location_latitude':lat,'location_longitude':lon})
-            vals.update({'last_location':addr[0].encode('UTF8')})      
-            loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':self.employee_device.id,'employee_location_rel':self.id,'last_location':addr[0].encode('UTF8')})        
+            vals.update({'last_location':addr})      
+            loc_id=self.env['kts.fieldforce.employee.location'].create({'location_latitude':lat,'location_longitude':lon,'employee_device':self.employee_device.id,'employee_location_rel':self.id,'last_location':addr})        
         if vals.get('employee_id'):
             del vals['employee_id'] 
+        vals.update({'last_update_date':fields.Datetime.now(),})
         return super(kts_fieldforce_employee, self).write(vals)    
         
     
