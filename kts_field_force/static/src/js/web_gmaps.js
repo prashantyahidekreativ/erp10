@@ -7,7 +7,10 @@ odoo.define('kts_field_force.web_gmaps', function(require){
 	var Model = require('web.Model');
 	var bus = require('bus.bus').bus;
 	var QWeb = core.qweb;
-	
+	var data_manager = require('web.data_manager');
+	var View = require('web.View');
+	var _lt = core._lt;
+	var _t = core._t;
 	
 	var MyTest = common.FormWidget.extend({
 		
@@ -43,31 +46,43 @@ odoo.define('kts_field_force.web_gmaps', function(require){
         	var markerdata=[];
         	var pathValues = [];
         	var div_map=self.$el[0]; 
-       	    var map = new google.maps.Map(div_map, {
-               zoom: 15,
-               center: new google.maps.LatLng(parseFloat(self.field_manager.get_field_value('location_latitude')),parseFloat(self.field_manager.get_field_value('location_longitude'))),
-               mapTypeId: google.maps.MapTypeId.ROADMAP
-             });
-       	 
-       	   var markermain = new google.maps.Marker({
-             position: new google.maps.LatLng(parseFloat(self.field_manager.get_field_value('location_latitude')),parseFloat(self.field_manager.get_field_value('location_longitude'))),
-             map: map,
-             
-       	   });
-        
-       	 $.each(cords, function(index, data){
+       	    
+       	     
+       	   
+       	   $.each(cords, function(index, data){
         		markerdata.push([parseFloat(data.location_latitude),parseFloat(data.location_longitude),data.create_date,data.last_location]);
         		pathValues.push(parseFloat(data.location_latitude)+','+parseFloat(data.location_longitude));    
         		
        	    });
        	
-       	var infowindow = new google.maps.InfoWindow({
+       	 
+       	   var infowindow = new google.maps.InfoWindow({
             maxWidth: 160
           });
 
-        var markers = new Array();
+        if (markerdata.length ==0){
+        	div_map.innerHTML="<div style='text-align: center;vertical-align: middle;font-size: 30px; padding-top: 250px;color: Red'>No data found for this date</div>";
+        }
+       	var markers = new Array();
         for (var i = 0; i < markerdata.length; i++) {  
-            var marker = new google.maps.Marker({
+        	
+        	if (i==0){
+        	var map = new google.maps.Map(div_map, {
+                zoom: 15,
+                center: new google.maps.LatLng(markerdata[i][0], markerdata[i][1]),
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+              });
+        	
+        	var markermain = new google.maps.Marker({
+                position: new google.maps.LatLng(markerdata[i][0], markerdata[i][1]),
+                map: map,
+                title: markerdata[i][2]+' At '+markerdata[i][3],
+          	   });
+            
+        	
+        	}
+        	
+        	var marker = new google.maps.Marker({
               position: new google.maps.LatLng(markerdata[i][0], markerdata[i][1]),
               map: map,
               icon: 'http://maps.google.com/mapfiles/ms/micons/man.png',
@@ -209,10 +224,91 @@ odoo.define('kts_field_force.web_gmaps', function(require){
     	    
 	});
 	
-    
+    //Gmap View
+	
+	var GmapView = View.extend({
+		template: 'Gmaps',
+	    display_name: _lt('Gmap'),
+	    icon: 'fa-map-marker',
+	    require_fields: true,
+
+	    init: function() {
+	        this._super.apply(this, arguments);
+	        this.view_type = 'gmap';
+	     },
+	     
+	     start: function() {
+
+	         var self = this;
+	         if (typeof google== 'undefined') {
+	             window.ginit = this.on_ready;
+	             $.getScript('https://maps.googleapis.com/maps/api/js?key=AIzaSyB3ghpGMTrWuBg9qit3WH9_P1CvKL7Mrto&callback=ginit');             
+	         }
+	         else {
+	             this.on_ready();
+	         } 
+	        // this.$el.prepend('<div> hii prashant for this great work</div>');
+	        
+	     },
+   
+	     on_ready: function() {
+	        // var myLatlng = new google.maps.LatLng(45, 25);
+	         var mapOptions = {
+	             zoom: 8,
+	             mapTypeId: google.maps.MapTypeId.ROADMAP
+	         };
+	         
+	         var div_gmap = this.$("#the_map")[0];
+	        
+	         this.map = new google.maps.Map(div_gmap, mapOptions); 
+	         
+	         var self = this;
+	         self.dataset.read_slice(_.keys(self.fields_view.fields)).then(function(data){
+	             _(data).each(self.do_load_record); 
+	         }); 
+	     },
+	     
+	     
+	     do_load_record: function(record){
+             var self = this;
+             var tbody_content='';
+             tbody_content += 
+     		    "<tr>" +
+     		      "<td>" + record.employee[1] + "</td>" +
+     		      "<td>" + record.last_location + "</td>" +
+     		      "<td>" + record.last_update_date + "</td>" +
+     		      "<td>" + record.device_state + "</td>" +
+     		      "</tr>";
+             this.$('#cust_table').find('tbody').append(tbody_content);
+             
+             
+             
+             var myLatlng = new google.maps.LatLng(record.location_latitude, record.location_longitude);
+             this.map.setCenter(myLatlng);
+             var marker = new google.maps.Marker({
+                 position: myLatlng,
+                 map: this.map,
+                 draggable:false,
+             
+             });  
+             
+             var infowindow = new google.maps.InfoWindow({
+                 content: record.employee[1]+' At '+record.last_location
+               });
+             
+             marker.addListener('click', function() {
+                 infowindow.open(this.map, marker);
+               });
+       
+         },
+	     
+                  
+         
+	});
+	
 	
 	core.form_tag_registry.add('mytest', MyTest);
-	
+	core.view_registry.add('gmap', GmapView);
 	
 	return { MyTest:MyTest,
 		     

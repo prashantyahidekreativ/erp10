@@ -12,7 +12,7 @@ import urllib
 import urllib2
 from itertools import izip
 
-
+GEO_VIEW = ('gmap', 'GMAP')
 def get_time_now_obj(context):
     tz=context.get('tz',False) if context else 'Asia/Kolkata'
     return datetime.now(pytz.timezone(tz or 'Asia/Kolkata'))
@@ -530,4 +530,21 @@ class kts_fieldforce_visit_details(models.Model):
 
         
         return {'key':True}
+    
+    
+class IrUIView(models.Model):
+    _inherit = 'ir.ui.view'
+
+    @api.model
+    def _setup_fields(self, partial):
+        """Hack due since the field 'type' is not defined with the new api.
+        """
+        cls = type(self)
+        type_selection = cls._fields['type'].selection
+        if GEO_VIEW not in type_selection:
+            tmp = list(type_selection)
+            tmp.append(GEO_VIEW)
+            cls._fields['type'].selection = tuple(set(tmp))
+        super(IrUIView, self)._setup_fields(partial)
+    
         

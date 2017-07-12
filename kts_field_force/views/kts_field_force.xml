@@ -55,7 +55,7 @@
             <field name="name">kts.fieldforce.employee.form</field>
             <field name="model">kts.fieldforce.employee</field>
             <field name="arch" type="xml">
-                <form string="Employee">
+                <form string="Employee" class="oe_form_configuration">
                     <group>
                        <group> 
                         
@@ -68,7 +68,7 @@
                           <field name="location_latitude"/>
                           <field name="location_longitude"/>
                           <field name="device_state" /> 
-                          <field name="filter_date1"/>
+                          <field name="filter_date1" />
                         </group>
                        
                     </group>
@@ -101,14 +101,32 @@
                 </tree>
             </field>
         </record>
-
+         
+         <record model="ir.ui.view" id="field_force_view_employee_gmap">
+            <field name="name">kts.fieldforce.employee.gmap</field>
+            <field name="model">kts.fieldforce.employee</field>
+            <field name="arch" type="xml">
+                <gmap string="Employee">
+                    <field name="employee" />
+                    <field name="employee_device" />
+                    <field name="last_update_date" />
+                    <field name="last_location" />
+                    <field name="device_state" />
+                    <field name="location_latitude"/>
+                    <field name="location_longitude"/>
+                          
+                </gmap>
+            </field>
+        </record>
+         
         <record id="field_force_view_employee_action" model="ir.actions.act_window">
             <field name="name">Employees</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">kts.fieldforce.employee</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">tree,form,gmap</field>
             <field name="view_type">form</field>
             <field name="view_id" ref="field_force_view_employee_tree"/>
+            <field name="flags">{'form': {'action_buttons': True, 'options': {'mode': 'edit'}}}</field>
         </record>
         
       

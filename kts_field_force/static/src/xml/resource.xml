@@ -14,5 +14,25 @@
    
    <t t-name="gps_base_gmap_marker1" style="height:500px;"> 
         <div name="gmap1" style="height:500px;" />
-    </t>  
+    </t> 
+    
+    <div t-name="Gmaps" t-att-id="elem_id" class="o_form_view">
+        <div>  
+          <table class="table table-hover" id="cust_table">
+              <thead>
+                   <tr>                     
+                   <th>Name</th>
+                   <th>Last Location</th>
+                   <th>Last Update Date</th>
+                   <th>Device State</th>
+                   </tr>
+                  </thead>
+                  <tbody>
+                 </tbody>
+          </table>
+         </div> 
+          <div id="the_map" style="height:700px;"></div>
+          
+    </div>
+     
 </template>
