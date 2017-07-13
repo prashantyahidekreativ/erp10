@@ -309,13 +309,7 @@ odoo.define('kts_field_force.web_gmaps', function(require){
                  infowindow.open(this.map, marker);
                });
              
-             var bounds = new google.maps.LatLngBounds();
-             //  Go through each...
-               
-       		 bounds.extend(marker.position);
              
-             //  Fit these bounds to the map
-             this.map.fitBounds(bounds);
          },
 	     
                   
