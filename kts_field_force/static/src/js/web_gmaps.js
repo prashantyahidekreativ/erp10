@@ -292,13 +292,19 @@ odoo.define('kts_field_force.web_gmaps', function(require){
              
              
              var url = 'data:image/png;base64,' + record.image_small;
+             var icon = {
+            		    url: url,
+            		    scaledSize: new google.maps.Size(50, 50), // scaled size
+            		    origin: new google.maps.Point(0,0), // origin
+            		    anchor: new google.maps.Point(0, 0) // anchor
+            		};
              var myLatlng = new google.maps.LatLng(record.location_latitude, record.location_longitude);
              this.map.setCenter(myLatlng);
              var marker = new google.maps.Marker({
                  position: myLatlng,
                  map: this.map,
                  draggable:false,
-                 icon:url,
+                 icon:icon,
              });  
              
              var infowindow = new google.maps.InfoWindow({
