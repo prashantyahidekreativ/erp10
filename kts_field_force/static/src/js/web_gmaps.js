@@ -11,7 +11,7 @@ odoo.define('kts_field_force.web_gmaps', function(require){
 	var View = require('web.View');
 	var _lt = core._lt;
 	var _t = core._t;
-	
+	var datepicker = require('web.datepicker');
 	var MyTest = common.FormWidget.extend({
 		
 		template: "gps_base_gmap_marker", 
@@ -271,25 +271,34 @@ odoo.define('kts_field_force.web_gmaps', function(require){
 	     
 	     do_load_record: function(record){
              var self = this;
+             var date1='';
+             var device='Inactive';
+             if (record.last_update_date){
+                 var date1=moment(record.last_update_date).format("ddd, MMMM Do YYYY,hA");
+             }
+             
+             if (record.device_state){
+            	 device='Active';
+             }
              var tbody_content='';
              tbody_content += 
      		    "<tr>" +
      		      "<td>" + record.employee[1] + "</td>" +
      		      "<td>" + record.last_location + "</td>" +
-     		      "<td>" + record.last_update_date + "</td>" +
-     		      "<td>" + record.device_state + "</td>" +
+     		      "<td>" + date1 + "</td>" +
+     		      "<td>" + device + "</td>" +
      		      "</tr>";
              this.$('#cust_table').find('tbody').append(tbody_content);
              
              
-             
+             var url = 'data:image/png;base64,' + record.image_small;
              var myLatlng = new google.maps.LatLng(record.location_latitude, record.location_longitude);
              this.map.setCenter(myLatlng);
              var marker = new google.maps.Marker({
                  position: myLatlng,
                  map: this.map,
                  draggable:false,
-             
+                 icon:url,
              });  
              
              var infowindow = new google.maps.InfoWindow({
@@ -299,16 +308,72 @@ odoo.define('kts_field_force.web_gmaps', function(require){
              marker.addListener('click', function() {
                  infowindow.open(this.map, marker);
                });
-       
+             
+             var bounds = new google.maps.LatLngBounds();
+             //  Go through each...
+               
+       		 bounds.extend(marker.position);
+             
+             //  Fit these bounds to the map
+             this.map.fitBounds(bounds);
          },
 	     
                   
          
 	});
 	
+	var MyFieldDate = common.AbstractField.extend(common.ReinitializeFieldMixin, {
+	    tagName: "span",
+	    className: "o_form_field_date",
+	    build_widget: function() {
+	        return new datepicker.DateWidget(this);
+	    },
+	    initialize_content: function() {
+	        if (this.datewidget) {
+	            this.datewidget.destroy();
+	            this.datewidget = undefined;
+	        }
+
+	        if (this.get("effective_readonly")) {
+	            this.datewidget = this.build_widget();
+	            this.datewidget.on('datetime_changed', this, function() {
+	                this.internal_set_value(this.datewidget.get_value());
+	            });
+
+	            var self = this;
+	            this.datewidget.appendTo('<div>').done(function() {
+	                self.datewidget.$el.addClass(self.$el.attr('class'));
+	                self.replaceElement(self.datewidget.$el);
+	                self.datewidget.$input.addClass('o_form_input');
+	                self.setupFocus(self.datewidget.$input);
+	            });
+	        }
+	    },
+	    render_value: function() {
+	        if (!this.get("effective_readonly")) {
+	            this.$el.text(formats.format_value(this.get('value'), this, ''));
+	        } else {
+	            this.datewidget.set_value(this.get('value'));
+	        }
+	    },
+	    is_syntax_valid: function() {
+	        return this.get("effective_readonly") || !this.datewidget || this.datewidget.is_valid();
+	    },
+	    is_false: function() {
+	        return this.get('value') === '' || this._super();
+	    },
+	    focus: function() {
+	        if (this.get("effective_readonly")) {
+	            return this.datewidget.$input.focus();
+	        }
+	        return false;
+	    },
+	});
+
 	
 	core.form_tag_registry.add('mytest', MyTest);
 	core.view_registry.add('gmap', GmapView);
+	core.form_widget_registry.add('mydate', MyFieldDate);
 	
 	return { MyTest:MyTest,
 		     

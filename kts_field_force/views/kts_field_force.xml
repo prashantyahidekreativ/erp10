@@ -55,7 +55,7 @@
             <field name="name">kts.fieldforce.employee.form</field>
             <field name="model">kts.fieldforce.employee</field>
             <field name="arch" type="xml">
-                <form string="Employee" class="oe_form_configuration">
+                <form string="Employee" class="oe_form_configuration" create="false" edit="false">
                     <group>
                        <group> 
                         
@@ -68,7 +68,7 @@
                           <field name="location_latitude"/>
                           <field name="location_longitude"/>
                           <field name="device_state" /> 
-                          <field name="filter_date1" />
+                          <field name="filter_date1" widget="mydate" />
                         </group>
                        
                     </group>
@@ -114,7 +114,7 @@
                     <field name="device_state" />
                     <field name="location_latitude"/>
                     <field name="location_longitude"/>
-                          
+                    <field name="image_small"/>      
                 </gmap>
             </field>
         </record>

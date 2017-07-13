@@ -41,6 +41,7 @@ class kts_fieldforce_employee(models.Model):
     #filter_date = fields.Date('Filter Date',default=fields.Datetime.now())
     filter_date1 = fields.Date('Filter Date',compute='compute_date',readonly=False) 
     last_update_date=fields.Datetime('Last Seen')
+    image_small=fields.Binary(related='employee.image_small',string="Small-sized photo",store=True)
     
     def compute_date(self):
         for record in self:
