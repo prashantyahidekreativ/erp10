@@ -146,26 +146,74 @@ class kts_gst_fiscal_position(models.Model):
                                ('gst_account_code_id','=',gst_acc_code.id),
                                ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
                        tax_add_ids = tax_obj.search(domain)
+                       if self.price_include:
+                           domain+=[('price_include','=',True)]
                        return tax_add_ids
                    elif self.gst_apply == 'inter' and  self.type=='out_invoice':
                         domain=[('type_tax_use','=','sale'),
                                ('gst_account_code_id','=',gst_acc_code.id),
                                ('gst_type','=','igst'),('amount','=',igst)]
+                        if self.price_include:
+                           domain+=[('price_include','=',True)]
                         tax_add_ids = tax_obj.search(domain)    
                         return tax_add_ids
                    elif self.gst_apply == 'intra' and  self.type=='in_invoice':    
                        domain=[('type_tax_use','=','purchase'),
                                ('gst_account_code_id','=',gst_acc_code.id),
                                ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
+                       if self.price_include:
+                           domain+=[('price_include','=',True)]
                        tax_add_ids = tax_obj.search(domain)
                        return tax_add_ids
                    elif self.gst_apply == 'inter' and  self.type=='in_invoice':
                         domain=[('type_tax_use','=','purchase'),
                                ('gst_account_code_id','=',gst_acc_code.id),
                                ('gst_type','=','igst'),('amount','=',igst)]
+                        if self.price_include:
+                           domain+=[('price_include','=',True)]
                         tax_add_ids = tax_obj.search(domain)    
                         return tax_add_ids
-
+        elif self.tax_type == 'gst' and product:
+               if not product.categ_id.hsn_id:
+                    raise UserError(_('Product %s not having hsn code please add hsn code')% product.name)
+               tax_obj=self.env['account.tax']
+               gst_acc_code=product.hsn_id.gst_account_id if product.hsn_id else product.categ_id.hsn_id.gst_account_id  
+               
+               cgst=gst_acc_code.cgst
+               sgst=gst_acc_code.sgst
+               igst=gst_acc_code.igst
+               if self.gst_apply == 'intra' and  self.type=='out_invoice':    
+                   domain=[('type_tax_use','=','sale'),
+                           ('gst_account_code_id','=',gst_acc_code.id),
+                           ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
+                   tax_add_ids = tax_obj.search(domain)
+                   if self.price_include:
+                       domain+=[('price_include','=',True)]
+                   return tax_add_ids
+               elif self.gst_apply == 'inter' and  self.type=='out_invoice':
+                    domain=[('type_tax_use','=','sale'),
+                           ('gst_account_code_id','=',gst_acc_code.id),
+                           ('gst_type','=','igst'),('amount','=',igst)]
+                    if self.price_include:
+                       domain+=[('price_include','=',True)]
+                    tax_add_ids = tax_obj.search(domain)    
+                    return tax_add_ids
+               elif self.gst_apply == 'intra' and  self.type=='in_invoice':    
+                   domain=[('type_tax_use','=','purchase'),
+                           ('gst_account_code_id','=',gst_acc_code.id),
+                           ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
+                   if self.price_include:
+                       domain+=[('price_include','=',True)]
+                   tax_add_ids = tax_obj.search(domain)
+                   return tax_add_ids
+               elif self.gst_apply == 'inter' and  self.type=='in_invoice':
+                    domain=[('type_tax_use','=','purchase'),
+                           ('gst_account_code_id','=',gst_acc_code.id),
+                           ('gst_type','=','igst'),('amount','=',igst)]
+                    if self.price_include:
+                       domain+=[('price_include','=',True)]
+                    tax_add_ids = tax_obj.search(domain)    
+                    return tax_add_ids 
         return result
 
 class kts_gst_account_configuration(models.TransientModel):
