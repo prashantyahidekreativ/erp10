@@ -45,7 +45,7 @@ class account_extension(models.Model):
         self.ensure_one()
         if self.amount_type == 'fixed':
             return math.copysign(self.amount, base_amount) * quantity
-        if (self.amount_type == 'percent' and not self.price_include) or (self.amount_type == 'division') or (self._context.get('tax')):
+        if (self.amount_type == 'percent' and not self.price_include) or (self.amount_type == 'division') or (self._context.get('tax') and self.tax_category != 'gst'):
             return base_amount * self.amount / 100
         if self.amount_type == 'percent' and self.price_include:   # and self._context.get('tax'):
             return  base_amount - (base_amount / (1 + self.amount / 100))
@@ -304,7 +304,7 @@ class kts_account_invoice(models.Model):
                 'amount': tax['amount'],
                 'manual': False,
                 'sequence': tax['sequence'],
-                'base_amount':price_unit,
+                'base_amount':price_unit - tax['amount'] if tax_ids.tax_category == 'gst' else price_unit ,
                 'account_analytic_id': tax['analytic'] and line.account_analytic_id.id or False,
                 'account_id': self.type in ('out_invoice', 'in_invoice') and (tax['account_id'] or line.account_id.id) or (tax['refund_account_id'] or line.account_id.id),
             }

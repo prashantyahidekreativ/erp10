@@ -266,14 +266,22 @@ class kts_account_invoice_excise(models.Model):
             for tax in line.invoice_line_tax_ids:
                 if tax in tax_line: 
                     if tax.price_include:
-                       tax_line.update({tax:{'val':tax_line[tax]['val']+line.price_subtotal, 'order_line':line}}) 
+                       if tax.tax_category=='gst':
+                           price= line.price_unit* (1-(line.discount or 0.0)/100.0)*line.quantity
+                       else:
+                           price= line.price_subtotal
+                       tax_line.update({tax:{'val':tax_line[tax]['val']+price, 'order_line':line}}) 
                     elif tax.applicable_mrp and line.product_id.excise_app:
                         tax_line.update({tax:{'val':tax_line[tax]['val']+(line.mrp_price* (1-(line.abatement_perc)/100.0)*line.quantity), 'order_line':line}})
                     else:
                         tax_line.update({tax:{'val':tax_line[tax]['val']+(line.price_unit* (1-(line.discount or 0.0)/100.0)*line.quantity), 'order_line':line}})
                 else:
                     if tax.price_include:
-                      tax_line.update({tax:{'val':line.price_subtotal, 'order_line':line}}) 
+                        if tax.tax_category=='gst':
+                           price= line.price_unit* (1-(line.discount or 0.0)/100.0)*line.quantity
+                        else:
+                           price= line.price_subtotal
+                        tax_line.update({tax:{'val':price, 'order_line':line}}) 
                     elif tax.applicable_mrp and line.product_id.excise_app:
                         tax_line.update({tax:{'val':(line.mrp_price* (1-(line.abatement_perc)/100.0)*line.quantity), 'order_line':line}})
                     else:

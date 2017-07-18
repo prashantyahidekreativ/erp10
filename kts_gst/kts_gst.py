@@ -145,9 +145,13 @@ class kts_gst_fiscal_position(models.Model):
                        domain=[('type_tax_use','=','sale'),
                                ('gst_account_code_id','=',gst_acc_code.id),
                                ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
-                       tax_add_ids = tax_obj.search(domain)
+                       
                        if self.price_include:
                            domain+=[('price_include','=',True)]
+                       else:
+                           domain+=[('price_include','=',False)]
+                       
+                       tax_add_ids = tax_obj.search(domain)
                        return tax_add_ids
                    elif self.gst_apply == 'inter' and  self.type=='out_invoice':
                         domain=[('type_tax_use','=','sale'),
@@ -155,7 +159,11 @@ class kts_gst_fiscal_position(models.Model):
                                ('gst_type','=','igst'),('amount','=',igst)]
                         if self.price_include:
                            domain+=[('price_include','=',True)]
+                        else:
+                           domain+=[('price_include','=',False)]
+                       
                         tax_add_ids = tax_obj.search(domain)    
+                        
                         return tax_add_ids
                    elif self.gst_apply == 'intra' and  self.type=='in_invoice':    
                        domain=[('type_tax_use','=','purchase'),
@@ -163,6 +171,9 @@ class kts_gst_fiscal_position(models.Model):
                                ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
                        if self.price_include:
                            domain+=[('price_include','=',True)]
+                       else:
+                           domain+=[('price_include','=',False)]
+                       
                        tax_add_ids = tax_obj.search(domain)
                        return tax_add_ids
                    elif self.gst_apply == 'inter' and  self.type=='in_invoice':
@@ -171,6 +182,9 @@ class kts_gst_fiscal_position(models.Model):
                                ('gst_type','=','igst'),('amount','=',igst)]
                         if self.price_include:
                            domain+=[('price_include','=',True)]
+                        else:
+                           domain+=[('price_include','=',False)]
+                       
                         tax_add_ids = tax_obj.search(domain)    
                         return tax_add_ids
         elif self.tax_type == 'gst' and product:
@@ -186,16 +200,23 @@ class kts_gst_fiscal_position(models.Model):
                    domain=[('type_tax_use','=','sale'),
                            ('gst_account_code_id','=',gst_acc_code.id),
                            ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
-                   tax_add_ids = tax_obj.search(domain)
                    if self.price_include:
-                       domain+=[('price_include','=',True)]
+                      domain+=[('price_include','=',True)]
+                   else:
+                     domain+=[('price_include','=',False)]
+                       
+                   tax_add_ids = tax_obj.search(domain)
+                   
                    return tax_add_ids
                elif self.gst_apply == 'inter' and  self.type=='out_invoice':
                     domain=[('type_tax_use','=','sale'),
                            ('gst_account_code_id','=',gst_acc_code.id),
                            ('gst_type','=','igst'),('amount','=',igst)]
                     if self.price_include:
-                       domain+=[('price_include','=',True)]
+                        domain+=[('price_include','=',True)]
+                    else:
+                        domain+=[('price_include','=',False)]
+                       
                     tax_add_ids = tax_obj.search(domain)    
                     return tax_add_ids
                elif self.gst_apply == 'intra' and  self.type=='in_invoice':    
@@ -203,7 +224,10 @@ class kts_gst_fiscal_position(models.Model):
                            ('gst_account_code_id','=',gst_acc_code.id),
                            ('gst_type','in',['sgst','cgst']),('amount','=',sgst)]
                    if self.price_include:
-                       domain+=[('price_include','=',True)]
+                      domain+=[('price_include','=',True)]
+                   else:
+                      domain+=[('price_include','=',False)]
+                       
                    tax_add_ids = tax_obj.search(domain)
                    return tax_add_ids
                elif self.gst_apply == 'inter' and  self.type=='in_invoice':
@@ -212,6 +236,8 @@ class kts_gst_fiscal_position(models.Model):
                            ('gst_type','=','igst'),('amount','=',igst)]
                     if self.price_include:
                        domain+=[('price_include','=',True)]
+                    else:
+                       domain+=[('price_include','=',False)]
                     tax_add_ids = tax_obj.search(domain)    
                     return tax_add_ids 
         return result
